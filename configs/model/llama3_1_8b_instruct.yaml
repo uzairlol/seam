@@ -1,0 +1,8 @@
+model_name: "llama3.1:8b-instruct"
+base_url: "http://localhost:11434"
+temperature: 0
+seed: null
+max_tokens: 512
+top_p: 1.0
+request_timeout: 60
+retry_attempts: 3
