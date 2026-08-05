@@ -1,0 +1,9 @@
+# Ignore everything by default so the repo stays minimal.
+*
+
+# Keep the root files visible.
+!.gitignore
+!README.md
+
+# Ignore the literature tree and all project working material.
+literature/
