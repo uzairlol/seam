@@ -115,7 +115,7 @@ Implementation follows a phase-gated build order:
 | 0 | Project scaffold, config system, dependency management | ✅ Completed |
 | 1 | Task environments with objective scoring | ✅ Completed |
 | 2 | Agent wrapper and Ollama client | ✅ Completed |
-| 3 | Three memory policies | ⬜ Not started |
+| 3 | Three memory policies | ✅ Completed |
 | 4 | Logging and reproducibility layer | ⬜ Not started |
 | 5 | Single-agent baselines | ⬜ Not started |
 | 6 | Shared broadcast channel | ⬜ Not started |
