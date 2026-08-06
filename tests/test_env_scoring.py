@@ -188,3 +188,74 @@ def test_successful_harvest_gives_reward_one() -> None:
     result = env.step({"agent_0": "harvest", "agent_1": "stay"})
     assert result["rewards"]["agent_0"] == 1.0
     assert result["rewards"]["agent_1"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# BargainingGame tests
+# ---------------------------------------------------------------------------
+
+from seam.envs.bargaining_game import BargainingGame
+from seam.envs.number_guessing import NumberGuessingGame
+
+
+def test_bargaining_game_mechanics_and_scoring() -> None:
+    """Test BargainingGame proposal parsing, deal acceptance/rejection, and score."""
+    env = BargainingGame(n_agents=2, episode_length=5, pie_size=100)
+    obs = env.reset(seed=42)
+    assert len(obs) == 2
+    assert "agent_0" in obs and "agent_1" in obs
+
+    # Step 1: Valid accepted deal (50 50)
+    result = env.step({"agent_0": "50 50", "agent_1": "accept"})
+    assert not result["done"]
+    info = result["info"]
+    proposer = info["deal"]["proposer"]
+    responder = info["deal"]["responder"]
+    assert result["rewards"][proposer] == 50.0
+    assert result["rewards"][responder] == 50.0
+
+    # Step 2: Rejected deal
+    result = env.step({"agent_0": "80 20", "agent_1": "reject"})
+    info = result["info"]
+    proposer = info["deal"]["proposer"]
+    responder = info["deal"]["responder"]
+    assert result["rewards"][proposer] == 0.0
+    assert result["rewards"][responder] == 0.0
+
+    score = env.get_ground_truth_score()
+    assert 0.0 < score <= 1.0
+
+
+def test_bargaining_game_invalid_proposal_fallback() -> None:
+    """Invalid proposer string falls back to 50/50 split."""
+    env = BargainingGame(n_agents=2, episode_length=2, pie_size=100)
+    env.reset(seed=10)
+    result = env.step({"agent_0": "invalid_proposal", "agent_1": "accept"})
+    info = result["info"]
+    assert info["deal"]["proposed_split"] == [50, 50]
+
+
+# ---------------------------------------------------------------------------
+# NumberGuessingGame tests
+# ---------------------------------------------------------------------------
+
+def test_number_guessing_game_mechanics() -> None:
+    """Test NumberGuessingGame feedback, solver reward, and ground truth score."""
+    env = NumberGuessingGame(n_agents=2, episode_length=10, secret_min=1, secret_max=100)
+    obs = env.reset(seed=123)
+    secret = env._secret
+
+    # Submit wrong guesses first
+    action = "1" if secret > 1 else "100"
+    result = env.step({"agent_0": action, "agent_1": action})
+    assert not result["done"]
+
+    # Submit correct guess
+    result = env.step({"agent_0": str(secret), "agent_1": str(secret)})
+    assert result["done"]
+    assert result["rewards"]["agent_0"] == 1.0
+    assert result["rewards"]["agent_1"] == 1.0
+
+    score = env.get_ground_truth_score()
+    assert score == 0.5  # solved in 2 rounds -> 1/2 = 0.5
+
