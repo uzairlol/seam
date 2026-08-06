@@ -112,9 +112,9 @@ Implementation follows a phase-gated build order:
 
 | Phase | What gets built | Status |
 |-------|----------------|--------|
-| 0 | Project scaffold, config system, dependency management | ⬜ Not started |
-| 1 | Task environments with objective scoring | ⬜ Not started |
-| 2 | Agent wrapper and Ollama client | ⬜ Not started |
+| 0 | Project scaffold, config system, dependency management | ✅ Completed |
+| 1 | Task environments with objective scoring | ✅ Completed |
+| 2 | Agent wrapper and Ollama client | 🚧 In progress |
 | 3 | Three memory policies | ⬜ Not started |
 | 4 | Logging and reproducibility layer | ⬜ Not started |
 | 5 | Single-agent baselines | ⬜ Not started |
