@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 def run_baselines(
     env_type: str = "resource_foraging",
+    model_name: str = "qwen2.5:7b",
     seeds: list[int] | None = None,
     output_dir: str = "runs/baselines",
 ) -> list[dict]:
@@ -29,6 +30,7 @@ def run_baselines(
 
     Args:
         env_type: Target environment type.
+        model_name: Name of the model in Ollama.
         seeds: List of random seeds to evaluate.
         output_dir: Parent output folder.
 
@@ -41,14 +43,14 @@ def run_baselines(
 
     for policy in policies:
         logger.info("==========================================")
-        logger.info("Running Baseline Policy: %s", policy)
+        logger.info("Running Baseline Policy: %s (model=%s)", policy, model_name)
         logger.info("==========================================")
 
         cfg = ExperimentConfig(
             experiment_id=f"baseline_{policy}",
             description=f"Phase 5 single-agent baseline run for {policy}",
             env=EnvConfig(type=env_type, n_agents=4, episode_length=20),
-            model=ModelConfig(model_name="qwen2.5:7b-instruct", base_url="http://localhost:11434"),
+            model=ModelConfig(model_name=model_name, base_url="http://localhost:11434"),
             memory=MemoryConfig(policy=policy),
             sharing=SharingConfig(mode="off"),
             poisoning=PoisoningConfig(mode="clean"),
@@ -74,12 +76,14 @@ def run_baselines(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run SEAM Phase 5 Baselines")
     parser.add_argument("--env", type=str, default="resource_foraging", help="Environment type")
+    parser.add_argument("--model", type=str, default="qwen2.5:7b", help="Ollama model tag")
     parser.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3], help="Random seeds")
     parser.add_argument("--outdir", type=str, default="runs/baselines", help="Output directory")
     args = parser.parse_args()
 
-    run_baselines(env_type=args.env, seeds=args.seeds, output_dir=args.outdir)
+    run_baselines(env_type=args.env, model_name=args.model, seeds=args.seeds, output_dir=args.outdir)
 
 
 if __name__ == "__main__":
     main()
+
