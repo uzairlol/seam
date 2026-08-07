@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import logging
 from pathlib import Path
 
@@ -28,6 +29,11 @@ def run_baselines(
 ) -> list[dict]:
     """Execute baseline runs for all 3 memory policies without sharing.
 
+    Each :class:`EpisodeRunner` is used as a context manager, guaranteeing that
+    the OllamaClient HTTP connection pool, agent population, and memory policies
+    are explicitly released after every seed.  A ``gc.collect()`` call is issued
+    after each seed *and* after the entire policy group to maximise heap reclaim.
+
     Args:
         env_type: Target environment type.
         model_name: Name of the model in Ollama.
@@ -39,7 +45,7 @@ def run_baselines(
     """
     target_seeds = seeds or [1, 2, 3]
     policies = ["naive_overwrite", "raw_trajectory_buffer", "structured_incremental"]
-    results = []
+    results: list[dict] = []
 
     for policy in policies:
         logger.info("==========================================")
@@ -59,8 +65,15 @@ def run_baselines(
 
         for seed in target_seeds:
             logger.info("Executing seed %d for %s ...", seed, policy)
-            runner = EpisodeRunner(config=cfg, seed=seed, base_dir=output_dir)
-            summary = runner.run()
+
+            # Context manager guarantees runner.close() is called even on exceptions.
+            with EpisodeRunner(config=cfg, seed=seed, base_dir=output_dir) as runner:
+                summary = runner.run()
+
+            # runner is now closed; drop the local reference and force a GC cycle.
+            del runner
+            gc.collect()
+
             results.append(summary)
             logger.info(
                 "Completed %s (seed %d) — Score: %.4f, Mean Self-BLEU: %.4f",
@@ -69,6 +82,11 @@ def run_baselines(
                 summary["final_score"],
                 summary["mean_self_bleu"],
             )
+
+        # After all seeds for this policy, do a second pass to catch any
+        # cross-iteration cyclic references (e.g. from logging handlers).
+        gc.collect()
+        logger.info("Policy '%s' finished — memory released.", policy)
 
     return results
 
@@ -86,4 +104,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

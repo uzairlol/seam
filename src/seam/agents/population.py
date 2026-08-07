@@ -31,6 +31,7 @@ class AgentPopulation:
     ) -> None:
         self.n_agents = n_agents
         self.config = model_config
+        self._client_injected = client is not None  # track whether client was externally provided
         self.shared_client = client or OllamaClient(model_config)
 
         prompts = system_prompts or {}
@@ -44,6 +45,23 @@ class AgentPopulation:
                 client=self.shared_client,
                 system_prompt=sys_prompt,
             )
+
+    def close(self) -> None:
+        """Release resources held by this population.
+
+        Clears all agent references and closes the shared :class:`OllamaClient`
+        connection pool unless the client was injected externally.
+        """
+        self.agents.clear()
+        if not self._client_injected:
+            self.shared_client.close()
+            logger.debug("AgentPopulation shared OllamaClient closed.")
+
+    def __enter__(self) -> "AgentPopulation":
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        self.close()
 
     @property
     def agent_ids(self) -> list[str]:

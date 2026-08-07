@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import logging
 from pathlib import Path
 from typing import Any
@@ -79,6 +80,43 @@ class EpisodeRunner:
         self.memory_policies: dict[str, BaseMemoryPolicy] = {
             aid: create_memory_policy(config.memory) for aid in self.population.agent_ids
         }
+
+    # ------------------------------------------------------------------
+    # Lifecycle helpers
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        """Explicitly release all resources held by this runner.
+
+        Closes the :class:`AgentPopulation` (and its shared OllamaClient
+        connection pool), clears memory policies, resets the environment
+        state, and forces a CPython GC cycle so that freed heap pages are
+        returned to the OS promptly.  Call this after :meth:`run` returns.
+        """
+        # 1. Close population → closes shared OllamaClient httpx pool
+        self.population.close()
+        logger.debug("EpisodeRunner: population closed.")
+
+        # 2. Drop all memory policy objects
+        self.memory_policies.clear()
+        logger.debug("EpisodeRunner: memory policies cleared.")
+
+        # 3. Reset environment internal state
+        if hasattr(self.env, "reset"):
+            try:
+                self.env.reset(seed=0)
+            except Exception:  # noqa: BLE001
+                pass  # best-effort
+
+        # 4. Force GC — reclaim any cyclic references lingering in response objects
+        gc.collect()
+        logger.debug("EpisodeRunner: gc.collect() completed.")
+
+    def __enter__(self) -> "EpisodeRunner":
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        self.close()
 
     def run(self) -> dict[str, Any]:
         """Execute the full episode.
