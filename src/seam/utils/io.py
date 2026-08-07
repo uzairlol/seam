@@ -33,6 +33,33 @@ def load_yaml(path: str | Path) -> dict[str, Any]:
         return yaml.safe_load(fh)  # type: ignore[no-any-return]
 
 
+def save_yaml(data: dict[str, Any], path: str | Path) -> None:
+    """Save a dictionary as a YAML file.
+
+    Args:
+        data: Dictionary data.
+        path: Output file path.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(data, fh, default_flow_style=False)
+
+
+def save_json(data: dict[str, Any], path: str | Path) -> None:
+    """Save a dictionary as a formatted JSON file.
+
+    Args:
+        data: Dictionary data.
+        path: Output file path.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
+
+
+
 def write_jsonl(records: list[dict[str, Any]], path: str | Path, *, append: bool = True) -> None:
     """Write a list of dicts to a JSONL file.
 
