@@ -68,11 +68,15 @@ class BargainingGame(BaseEnv):
     def reset(self, seed: int) -> dict[str, Any]:
         """Reset the environment.
 
+        Pre-selects the proposer and responder for the **first** round so that
+        the returned observations carry the correct upcoming role for each agent.
+
         Args:
             seed: Seed for all random operations.
 
         Returns:
-            ``{agent_id: obs_dict}`` with initial observations.
+            ``{agent_id: obs_dict}`` where each agent's ``"role"`` reflects
+            the role it will play in the first :meth:`step` call.
         """
         self._rng = np.random.default_rng(seed)
         self._round = 0
@@ -81,17 +85,33 @@ class BargainingGame(BaseEnv):
         agent_ids = [f"agent_{i}" for i in range(self._n_agents)]
         self._scores = {aid: 0.0 for aid in agent_ids}
         logger.debug("BargainingGame reset (seed=%d, pie=%d)", seed, self._pie_size)
-        return {aid: self._build_obs(aid, role="observer") for aid in agent_ids}
+
+        # Pre-select the pair for round 1 so agents see their correct upcoming role.
+        self._next_proposer, self._next_responder = self._sample_pair(agent_ids)
+
+        return {
+            aid: self._build_obs(
+                aid,
+                role="proposer" if aid == self._next_proposer else
+                     "responder" if aid == self._next_responder else "observer",
+            )
+            for aid in agent_ids
+        }
 
     def step(self, actions: dict[str, Any]) -> dict[str, Any]:
         """Advance one bargaining round.
 
-        Selects a random proposer–responder pair from all agents.  Their
-        submitted actions are used to resolve the deal.
+        Uses the proposer/responder pre-selected during the *previous*
+        :meth:`reset` or :meth:`step` call so that agents always acted with
+        the correct role visible in their observation.
+
+        After resolving the round, immediately pre-selects the next pair and
+        embeds those roles in the returned observations — ready for the next
+        ``act_all`` call.
 
         Args:
             actions: ``{agent_id: action_str}``.  The proposer's action should
-                be ``"<own> <other>"``; the responder's should be
+                be ``"<own> <other>"``.  The responder's should be
                 ``"accept"`` or ``"reject"``.
 
         Returns:
@@ -107,10 +127,9 @@ class BargainingGame(BaseEnv):
         agent_ids = list(self._scores.keys())
         rewards: dict[str, float] = {aid: 0.0 for aid in agent_ids}
 
-        # Randomly select proposer and responder (distinct)
-        indices = self._rng.choice(self._n_agents, size=2, replace=False)
-        proposer_id = agent_ids[int(indices[0])]
-        responder_id = agent_ids[int(indices[1])]
+        # Use the pair pre-selected in the previous reset()/step() call.
+        proposer_id = self._next_proposer
+        responder_id = self._next_responder
 
         # Parse proposer's split
         prop_action = str(actions.get(proposer_id, f"{self._pie_size // 2} {self._pie_size // 2}"))
@@ -145,13 +164,21 @@ class BargainingGame(BaseEnv):
 
         if self._round >= self._episode_length:
             self._done = True
+            # Episode over — roles no longer matter; use observer for all.
+            self._next_proposer = agent_ids[0]
+            self._next_responder = agent_ids[1]
+            next_role_map: dict[str, str] = {aid: "observer" for aid in agent_ids}
+        else:
+            # Pre-select roles for the NEXT round so observations are forward-looking.
+            self._next_proposer, self._next_responder = self._sample_pair(agent_ids)
+            next_role_map = {
+                aid: "proposer" if aid == self._next_proposer else
+                     "responder" if aid == self._next_responder else "observer"
+                for aid in agent_ids
+            }
 
         observations = {
-            aid: self._build_obs(
-                aid,
-                role="proposer" if aid == proposer_id else
-                     "responder" if aid == responder_id else "observer",
-            )
+            aid: self._build_obs(aid, role=next_role_map[aid])
             for aid in agent_ids
         }
         info: dict[str, Any] = {
@@ -165,6 +192,7 @@ class BargainingGame(BaseEnv):
             "done": self._done,
             "info": info,
         }
+
 
     def get_ground_truth_score(self) -> float:
         """Return a fairness score: ``1 / (1 + mean_deviation_from_50)``.
@@ -201,6 +229,18 @@ class BargainingGame(BaseEnv):
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _sample_pair(self, agent_ids: list[str]) -> tuple[str, str]:
+        """Sample a distinct (proposer, responder) pair from *agent_ids*.
+
+        Args:
+            agent_ids: List of all agent ID strings.
+
+        Returns:
+            ``(proposer_id, responder_id)`` tuple — always distinct.
+        """
+        indices = self._rng.choice(len(agent_ids), size=2, replace=False)
+        return agent_ids[int(indices[0])], agent_ids[int(indices[1])]
 
     def _parse_split(self, action: str) -> tuple[int, int]:
         """Parse a proposer split action string.
