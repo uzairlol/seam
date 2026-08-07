@@ -45,7 +45,8 @@ class MemoryConfig(BaseModel):
 class SharingConfig(BaseModel):
     """Configuration for the shared broadcast memory channel."""
 
-    mode: str  # "off" | "broadcast" | "selective"
+    mode: str  # "off" | "broadcast" | "selective" | "peer_to_peer"
+    topology: str = "full_broadcast"  # "full_broadcast" | "ring" | "star" | "cluster" | "off"
     publish_every_n_rounds: int = 3
     max_artifact_tokens: int = 128
     consume_mode: str = "all"  # "all" | "top_k"
