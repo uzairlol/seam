@@ -1,4 +1,4 @@
-model_name: "llama3.1:8b-instruct"
+model_name: "llama3.1:8b"
 base_url: "http://localhost:11434"
 temperature: 0
 seed: null
