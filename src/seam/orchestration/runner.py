@@ -24,6 +24,8 @@ from seam.metrics.collapse import (
 from seam.orchestration.config_loader import ExperimentConfig
 from seam.utils.reproducibility import set_seed
 
+from seam.sharing.engine import MemorySharingEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +73,7 @@ class EpisodeRunner:
         else:
             raise ValueError(f"Unsupported environment type '{config.env.type}'")
 
-        # 2. Initialize Population & Memory Policies
+        # 2. Initialize Population, Memory Policies & Sharing Engine
         self.population = AgentPopulation(
             n_agents=config.env.n_agents,
             model_config=config.model,
@@ -80,6 +82,11 @@ class EpisodeRunner:
         self.memory_policies: dict[str, BaseMemoryPolicy] = {
             aid: create_memory_policy(config.memory) for aid in self.population.agent_ids
         }
+        self.sharing_engine = MemorySharingEngine(
+            config=config.sharing,
+            n_agents=config.env.n_agents,
+            topology_type=config.sharing.topology,
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle helpers
@@ -90,16 +97,18 @@ class EpisodeRunner:
 
         Closes the :class:`AgentPopulation` (and its shared OllamaClient
         connection pool), clears memory policies, resets the environment
-        state, and forces a CPython GC cycle so that freed heap pages are
-        returned to the OS promptly.  Call this after :meth:`run` returns.
+        state, closes the sharing engine, and forces a CPython GC cycle so
+        that freed heap pages are returned to the OS promptly. Call this
+        after :meth:`run` returns.
         """
         # 1. Close population → closes shared OllamaClient httpx pool
         self.population.close()
         logger.debug("EpisodeRunner: population closed.")
 
-        # 2. Drop all memory policy objects
+        # 2. Drop all memory policy objects & close sharing engine
         self.memory_policies.clear()
-        logger.debug("EpisodeRunner: memory policies cleared.")
+        self.sharing_engine.close()
+        logger.debug("EpisodeRunner: memory policies & sharing engine cleared.")
 
         # 3. Reset environment internal state
         if hasattr(self.env, "reset"):
@@ -138,10 +147,18 @@ class EpisodeRunner:
         while not done:
             round_num += 1
 
-            # Get current memory contexts
-            memory_contexts = {
-                aid: policy.get_context() for aid, policy in self.memory_policies.items()
-            }
+            # Step sharing engine to process and route memories across topology
+            self.sharing_engine.step(round_num=round_num, memory_policies=self.memory_policies)
+
+            # Get combined memory contexts (local policy + shared peer context)
+            memory_contexts = {}
+            for aid, policy in self.memory_policies.items():
+                local_ctx = policy.get_context()
+                shared_ctx = self.sharing_engine.get_shared_context(aid)
+                if shared_ctx:
+                    memory_contexts[aid] = f"{local_ctx}\n\n{shared_ctx}" if local_ctx else shared_ctx
+                else:
+                    memory_contexts[aid] = local_ctx
 
             # Collect actions from all agents
             actions = self.population.act_all(
