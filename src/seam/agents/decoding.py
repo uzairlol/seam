@@ -38,6 +38,23 @@ class OllamaClient:
             config.base_url,
         )
 
+    def close(self) -> None:
+        """Close underlying HTTP client connection pool to free system RAM and sockets."""
+        try:
+            if hasattr(self._client, "_client") and hasattr(self._client._client, "close"):
+                self._client._client.close()
+            elif hasattr(self._client, "close"):
+                self._client.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Error closing Ollama client pool: %s", exc)
+
+    def __enter__(self) -> OllamaClient:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
