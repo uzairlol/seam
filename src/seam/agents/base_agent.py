@@ -31,10 +31,27 @@ class BaseAgent:
     ) -> None:
         self.agent_id = agent_id
         self.config = model_config
+        self._owns_client = client is None  # track ownership to avoid double-close
         self.client = client or OllamaClient(model_config)
         self.system_prompt = system_prompt or (
             "You are a helpful, rational agent acting in a multi-agent environment."
         )
+
+    def close(self) -> None:
+        """Release resources held by this agent.
+
+        Closes the underlying :class:`OllamaClient` connection pool only if
+        this agent created the client itself (i.e. no shared client was injected).
+        """
+        if self._owns_client:
+            self.client.close()
+            logger.debug("[%s] OllamaClient closed.", self.agent_id)
+
+    def __enter__(self) -> "BaseAgent":
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        self.close()
 
     def format_prompt(
         self,
