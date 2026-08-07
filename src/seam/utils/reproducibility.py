@@ -7,7 +7,22 @@ import subprocess
 from datetime import datetime, timezone
 from typing import Optional
 
+import random
+import numpy as np
+
 logger = logging.getLogger(__name__)
+
+
+def set_seed(seed: int) -> None:
+    """Set global random seeds for Python random and NumPy for determinism.
+
+    Args:
+        seed: Random seed integer.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    logger.debug("Set global seed: %d", seed)
+
 
 
 def get_git_commit_hash() -> Optional[str]:
