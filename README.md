@@ -117,7 +117,7 @@ Implementation follows a phase-gated build order:
 | 2 | Agent wrapper and Ollama client | ✅ Completed |
 | 3 | Three memory policies | ✅ Completed |
 | 4 | Logging and reproducibility layer | ✅ Completed |
-| 5 | Single-agent baselines | ⬜ Not started |
+| 5 | Single-agent baselines | ✅ Completed |
 | 6 | Shared broadcast channel | ⬜ Not started |
 | 7 | Poisoning condition | ⬜ Not started |
 | 8 | Full multi-agent experiment runs | ⬜ Not started |
