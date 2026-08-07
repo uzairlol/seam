@@ -61,6 +61,11 @@ class BaseAgent:
     ) -> str:
         """Construct the prompt sent to the LLM.
 
+        Role-aware: when the observation contains a ``"role"`` key (as emitted
+        by :class:`BargainingGame`), the instruction explicitly describes the
+        required output format so the LLM does not confuse proposer/responder
+        syntax and produce parse warnings.
+
         Args:
             observation: Current observation dict from the environment.
             action_space: List of valid action strings.
@@ -70,10 +75,10 @@ class BaseAgent:
             Fully assembled prompt string.
         """
         lines = [
-            f"=== System ===",
+            "=== System ===",
             self.system_prompt,
             "",
-            f"=== Agent ID ===",
+            "=== Agent ID ===",
             self.agent_id,
         ]
 
@@ -93,9 +98,31 @@ class BaseAgent:
             ", ".join(action_space[:10]) + ("..." if len(action_space) > 10 else ""),
             "",
             "=== Instruction ===",
-            "Respond with your chosen action. Your response must clearly contain one of the valid action strings.",
-            "Action:",
         ])
+
+        # Build a role-specific instruction when the environment signals a role.
+        role = observation.get("role") if isinstance(observation, dict) else None
+        if role == "proposer":
+            pie = observation.get("pie_size", 100)
+            half = pie // 2
+            lines.append(
+                f"You are the PROPOSER this round. You must propose how to split {pie} units "
+                f"between yourself and the other agent. "
+                f"Respond with ONLY two integers separated by a space, e.g. \"{half} {pie - half}\". "
+                f"Do NOT write 'accept', 'reject', or any other word."
+            )
+        elif role == "responder":
+            lines.append(
+                "You are the RESPONDER this round. You must decide whether to accept or reject "
+                "the proposer's offer. Respond with ONLY the word \"accept\" or \"reject\"."
+            )
+        else:
+            lines.append(
+                "Respond with your chosen action. "
+                "Your response must clearly contain one of the valid action strings."
+            )
+
+        lines.append("Action:")
         return "\n".join(lines)
 
     def extract_action(
