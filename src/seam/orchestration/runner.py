@@ -24,6 +24,11 @@ from seam.metrics.collapse import (
 from seam.orchestration.config_loader import ExperimentConfig
 from seam.utils.reproducibility import set_seed
 
+from seam.metrics.contamination import (
+    compute_contamination_rate,
+    compute_poison_adherence,
+)
+from seam.poisoning.injector import PoisonInjector
 from seam.sharing.engine import MemorySharingEngine
 
 logger = logging.getLogger(__name__)
@@ -73,7 +78,7 @@ class EpisodeRunner:
         else:
             raise ValueError(f"Unsupported environment type '{config.env.type}'")
 
-        # 2. Initialize Population, Memory Policies & Sharing Engine
+        # 2. Initialize Population, Memory Policies, Sharing Engine & Poison Injector
         self.population = AgentPopulation(
             n_agents=config.env.n_agents,
             model_config=config.model,
@@ -86,6 +91,10 @@ class EpisodeRunner:
             config=config.sharing,
             n_agents=config.env.n_agents,
             topology_type=config.sharing.topology,
+        )
+        self.poison_injector = PoisonInjector(
+            config=config.poisoning,
+            env_type=config.env.type,
         )
 
     # ------------------------------------------------------------------
@@ -131,11 +140,14 @@ class EpisodeRunner:
         """Execute the full episode.
 
         Returns:
-            Summary dictionary containing final score, cumulative rewards, and collapse metrics.
+            Summary dictionary containing final score, cumulative rewards, collapse metrics, and contamination metrics.
         """
         set_seed(self.seed)
         obs = self.env.reset(self.seed)
         action_space = self.env.action_space
+
+        # Inject initial internal poison if configured
+        self.poison_injector.inject_initial_memory(self.memory_policies)
 
         per_agent_actions: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
         per_agent_rewards: dict[str, list[float]] = {aid: [] for aid in self.population.agent_ids}
@@ -146,6 +158,9 @@ class EpisodeRunner:
 
         while not done:
             round_num += 1
+
+            # Inject channel/gradual poison if active
+            self.poison_injector.inject_channel(self.sharing_engine, round_num=round_num)
 
             # Step sharing engine to process and route memories across topology
             self.sharing_engine.step(round_num=round_num, memory_policies=self.memory_policies)
@@ -215,6 +230,20 @@ class EpisodeRunner:
             aid: compute_memory_length(mems) for aid, mems in per_agent_memories.items()
         }
 
+        # Contamination metrics
+        poison_payload = self.poison_injector.poison_payload
+        poison_keywords = [k for k in poison_payload.split() if len(k) > 3][:3]
+        peer_contamination_rate = compute_contamination_rate(
+            per_agent_memories=per_agent_memories,
+            poison_keywords=poison_keywords,
+            seed_agent_id=self.config.poisoning.poison_agent_id,
+        ) if self.poison_injector.is_active else 0.0
+
+        per_agent_poison_adherence = {
+            aid: compute_poison_adherence(acts, target_pattern=poison_payload)
+            for aid, acts in per_agent_actions.items()
+        } if self.poison_injector.is_active else {aid: 0.0 for aid in self.population.agent_ids}
+
         summary = {
             "run_id": self.logger_inst.run_id,
             "seed": self.seed,
@@ -225,6 +254,8 @@ class EpisodeRunner:
             "per_agent_self_bleu": per_agent_self_bleu,
             "per_agent_action_entropy": per_agent_action_entropy,
             "per_agent_memory_lengths": per_agent_memory_lengths,
+            "peer_contamination_rate": peer_contamination_rate,
+            "per_agent_poison_adherence": per_agent_poison_adherence,
         }
 
         self.logger_inst.log_episode_end(final_score=ground_truth_score, summary_info=summary)
