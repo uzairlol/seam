@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from seam.logging.rehydrator import RunRehydrator
 
@@ -64,10 +65,10 @@ class ResultAggregator:
         return pd.DataFrame(records)
 
     def aggregate_conditions(self) -> pd.DataFrame:
-        """Group results by (policy, topology, poisoning_mode) and compute mean and SEM.
+        """Group results by (policy, topology, poisoning_mode) and compute summary statistics.
 
         Returns:
-            DataFrame with aggregated metrics.
+            DataFrame with aggregated metrics, including mean, std, count, SEM, and 95% CI.
         """
         if self.df.empty:
             return pd.DataFrame()
@@ -86,10 +87,27 @@ class ResultAggregator:
         grouped.columns = [f"{col}_{stat}" for col, stat in grouped.columns]
         grouped = grouped.reset_index()
 
-        # Compute Standard Error of Mean (SEM = std / sqrt(n))
+        # Compute Standard Error of Mean (SEM = std / sqrt(n)) and 95% CI using a t distribution.
         for m in target_metrics:
-            if f"{m}_std" in grouped.columns and f"{m}_count" in grouped.columns:
-                grouped[f"{m}_sem"] = grouped[f"{m}_std"] / np.sqrt(np.maximum(1, grouped[f"{m}_count"]))
+            std_col = f"{m}_std"
+            count_col = f"{m}_count"
+            mean_col = f"{m}_mean"
+            if std_col in grouped.columns and count_col in grouped.columns and mean_col in grouped.columns:
+                counts = np.maximum(1, grouped[count_col].astype(float))
+                std = grouped[std_col].astype(float)
+                mean = grouped[mean_col].astype(float)
+                sem = std / np.sqrt(counts)
+                grouped[f"{m}_sem"] = sem
+
+                ci_half_width = pd.Series(0.0, index=grouped.index, dtype=float)
+                valid_mask = counts > 1
+                if valid_mask.any():
+                    dfree = counts[valid_mask] - 1
+                    critical_values = stats.t.ppf(0.975, dfree)
+                    ci_half_width.loc[valid_mask] = critical_values * sem[valid_mask]
+
+                grouped[f"{m}_ci_low"] = mean - ci_half_width
+                grouped[f"{m}_ci_high"] = mean + ci_half_width
 
         return grouped
 
@@ -104,7 +122,7 @@ class ResultAggregator:
             return "No data available."
 
         lines = [
-            "| Policy | Topology | Poisoning | Score (Mean ± SEM) | Self-BLEU (Mean ± SEM) | Contamination Rate | Runs |",
+            "| Policy | Topology | Poisoning | Score (Mean ± 95% CI) | Self-BLEU (Mean ± 95% CI) | Contamination Rate (Mean ± 95% CI) | Runs |",
             "|---|---|---|---|---|---|---|",
         ]
 
@@ -114,16 +132,22 @@ class ResultAggregator:
             poi = row.get("poisoning_mode", "N/A")
 
             score_m = row.get("final_score_mean", 0.0)
-            score_s = row.get("final_score_sem", 0.0)
-            score_str = f"{score_m:.4f} ± {score_s:.4f}"
+            score_lo = row.get("final_score_ci_low", score_m)
+            score_hi = row.get("final_score_ci_high", score_m)
+            score_str = f"{score_m:.4f} [{score_lo:.4f}, {score_hi:.4f}]"
 
             bleu_m = row.get("mean_self_bleu_mean", 0.0)
-            bleu_s = row.get("mean_self_bleu_sem", 0.0)
-            bleu_str = f"{bleu_m:.4f} ± {bleu_s:.4f}"
+            bleu_lo = row.get("mean_self_bleu_ci_low", bleu_m)
+            bleu_hi = row.get("mean_self_bleu_ci_high", bleu_m)
+            bleu_str = f"{bleu_m:.4f} [{bleu_lo:.4f}, {bleu_hi:.4f}]"
 
             cont_m = row.get("peer_contamination_rate_mean", 0.0)
+            cont_lo = row.get("peer_contamination_rate_ci_low", cont_m)
+            cont_hi = row.get("peer_contamination_rate_ci_high", cont_m)
             n_runs = int(row.get("final_score_count", 0))
 
-            lines.append(f"| {pol} | {top} | {poi} | {score_str} | {bleu_str} | {cont_m:.2%} | {n_runs} |")
+            cont_str = f"{cont_m:.2%} [{cont_lo:.2%}, {cont_hi:.2%}]"
+
+            lines.append(f"| {pol} | {top} | {poi} | {score_str} | {bleu_str} | {cont_str} | {n_runs} |")
 
         return "\n".join(lines)

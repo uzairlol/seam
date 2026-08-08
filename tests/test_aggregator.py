@@ -43,6 +43,11 @@ def test_aggregator_with_csv():
         assert len(summary_df) == 1
         assert pytest.approx(summary_df.iloc[0]["final_score_mean"]) == 0.85
         assert "final_score_sem" in summary_df.columns
+        assert "final_score_ci_low" in summary_df.columns
+        assert "final_score_ci_high" in summary_df.columns
+        assert summary_df.iloc[0]["final_score_ci_low"] <= summary_df.iloc[0]["final_score_mean"]
+        assert summary_df.iloc[0]["final_score_ci_high"] >= summary_df.iloc[0]["final_score_mean"]
 
         md_table = agg.to_markdown_table()
         assert "| naive_overwrite | ring | clean |" in md_table
+        assert "95% CI" in md_table
