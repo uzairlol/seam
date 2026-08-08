@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 import tempfile
 import pandas as pd
 
-from scripts.run_experiments import _save_summary_manifest, generate_experiment_grid
+
+def _load_run_experiments_module():
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "run_experiments.py"
+    spec = importlib.util.spec_from_file_location("run_experiments_module", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_run_experiments = _load_run_experiments_module()
+_save_summary_manifest = _run_experiments._save_summary_manifest
+generate_experiment_grid = _run_experiments.generate_experiment_grid
 
 
 def test_generate_experiment_grid():

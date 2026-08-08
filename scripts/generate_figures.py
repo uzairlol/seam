@@ -43,6 +43,11 @@ def generate_figures(input_dir: str = "runs/experiments", figures_dir: str = "fi
     plot_contamination_propagation(df, fig_path / "contamination_propagation.png")
 
     # 2. Export Markdown Table
+    stats_df = aggregator.aggregate_conditions()
+    stats_csv = fig_path / "summary_statistics.csv"
+    stats_df.to_csv(stats_csv, index=False)
+    logger.info("Saved summary statistics to %s", stats_csv)
+
     table_md = aggregator.to_markdown_table()
     table_file = fig_path / "summary_table.md"
     with open(table_file, "w", encoding="utf-8") as f:
