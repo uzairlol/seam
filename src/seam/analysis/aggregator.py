@@ -106,8 +106,8 @@ class ResultAggregator:
                     critical_values = stats.t.ppf(0.975, dfree)
                     ci_half_width.loc[valid_mask] = critical_values * sem[valid_mask]
 
-                grouped[f"{m}_ci_low"] = mean - ci_half_width
-                grouped[f"{m}_ci_high"] = mean + ci_half_width
+                grouped[f"{m}_ci_low"] = np.clip(mean - ci_half_width, 0.0, 1.0)
+                grouped[f"{m}_ci_high"] = np.clip(mean + ci_half_width, 0.0, 1.0)
 
         return grouped
 
