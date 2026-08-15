@@ -35,7 +35,7 @@ The task environments have objective, deterministic scoring — so that "did thi
 
 This sits at the intersection of two open gaps in the 2025–2026 literature:
 
-1. The connection between the Echo Trap (RL self‑evolution) and context collapse (memory self‑evolution) as the same underlying failure mode seen from two directions — nobody has written the paper connecting them.  
+1. The connection between the Echo Trap (RL self‑evolution) and context collapse (memory self‑evolution) as the same underlying failure mode seen from two directions — nobody has written the paper connecting them.
 2. Multi‑agent memory poisoning via honest peer experience — OEP and Zombie Agents both study one agent poisoning itself or being attacked by a static adversarial document. Nobody has asked what happens when the "poison" is just another self‑evolving agent's own non‑transferable lesson propagating organically through a shared channel.
 
 ---
@@ -43,57 +43,66 @@ This sits at the intersection of two open gaps in the 2025–2026 literature:
 ## System Architecture & Features
 
 ### Environments
+
 Three task environments with objective, deterministic scoring (no LLM judge needed):
+
 - **Resource Foraging** *(primary)*: shared 10×10 grid, agents harvest resources over 50 rounds
 - **Bargaining Game** *(secondary)*: repeated negotiation with a computable Nash equilibrium
 - **Number Guessing** *(validation)*: simplest possible environment for metric calibration
 
 ### Memory policies (ablation)
-| Policy | Mechanism | Expected behaviour |
-|--------|-----------|-------------------|
-| Naive Overwrite | Full LLM rewrite of memory each round | Fast collapse via brevity bias |
-| Raw Trajectory Buffer | Sliding window of raw `(state, action, reward)` tuples | Slower collapse, noisier |
-| Structured Incremental Update | ACE‑style Generate→Reflect→Curate playbook | Most collapse‑resistant; explicit deprecation mechanism |
+
+| Policy                        | Mechanism                                               | Expected behaviour                                       |
+| ----------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| Naive Overwrite               | Full LLM rewrite of memory each round                   | Fast collapse via brevity bias                           |
+| Raw Trajectory Buffer         | Sliding window of raw`(state, action, reward)` tuples | Slower collapse, noisier                                 |
+| Structured Incremental Update | ACE‑style Generate→Reflect→Curate playbook           | Most collapse‑resistant; explicit deprecation mechanism |
 
 ### Shared channel & Communication Topologies
-- Agents publish a compressed memory artifact every **N** rounds  
-- **Topologies**: Off (isolated), Full Broadcast (all-to-all), and Ring topology  
+
+- Agents publish a compressed memory artifact every **N** rounds
+- **Topologies**: Off (isolated), Full Broadcast (all-to-all), and Ring topology
 - **Selective Consumption**: Filter by highest embedding similarity
 
 ### Poisoning condition
-One agent is seeded with a plausible but non‑transferable lesson at round 0. We then measure:  
-- Does the lesson persist in Agent 0's memory across rounds?  
-- Does it appear in other agents' memories after the shared‑channel exchange?  
+
+One agent is seeded with a plausible but non‑transferable lesson at round 0. We then measure:
+
+- Does the lesson persist in Agent 0's memory across rounds?
+- Does it appear in other agents' memories after the shared‑channel exchange?
 - Does it measurably degrade their task performance?
 
 ---
 
 ## Measurement & Metrics
 
-**Collapse metrics:**  
-- Self‑BLEU between successive memory states (lexical repetition)  
-- Embedding cosine similarity between successive memory states  
-- Action entropy over a rolling window (behavioural diversity)  
+**Collapse metrics:**
+
+- Self‑BLEU between successive memory states (lexical repetition)
+- Embedding cosine similarity between successive memory states
+- Action entropy over a rolling window (behavioural diversity)
 - Memory length trajectory (brevity bias proxy)
 
-**Contamination metrics:**  
-- Poison presence score per agent per round (embedding similarity to the poison lesson)  
-- Time‑to‑propagation (first round where another agent crosses the contamination threshold)  
-- Propagation fraction (what share of agents are contaminated by round T)  
+**Contamination metrics:**
+
+- Poison presence score per agent per round (embedding similarity to the poison lesson)
+- Time‑to‑propagation (first round where another agent crosses the contamination threshold)
+- Propagation fraction (what share of agents are contaminated by round T)
 - Performance degradation attributable to the contaminated lesson
 
-**Performance metrics:**  
-- Cumulative reward per agent per run  
-- Per‑round regret vs. optimal policy  
-- Inter‑agent reward variance  
+**Performance metrics:**
+
+- Cumulative reward per agent per run
+- Per‑round regret vs. optimal policy
+- Inter‑agent reward variance
 
 ### Quantitative Results (Deterministic Decoding)
 
-| Memory Policy | Sharing | Topologies | Poisoning | Mean Score (± 95 % CI) |
-|---------------|---------|------------|-----------|-----------------------|
-| Structured Incremental | ON | Ring / Broadcast | Clean | **0.1801** [0.0807, 0.2796] |
-| Structured Incremental | ON | Broadcast | Clean | **0.1699** [0.1072, 0.2326] |
-| Naïve Overwrite | OFF | Off | Clean | 0.0033 [0.0000, 0.0177] |
+| Memory Policy          | Sharing | Topologies       | Poisoning | Mean Score (± 95 % CI)          |
+| ---------------------- | ------- | ---------------- | --------- | --------------------------------- |
+| Structured Incremental | ON      | Ring / Broadcast | Clean     | **0.1801** [0.0807, 0.2796] |
+| Structured Incremental | ON      | Broadcast        | Clean     | **0.1699** [0.1072, 0.2326] |
+| Naïve Overwrite       | OFF     | Off              | Clean     | 0.0033 [0.0000, 0.0177]           |
 
 Structured Incremental achieves a **~55× higher mean score** than Naïve Overwrite, confirming its robustness against collapse.
 
@@ -101,16 +110,16 @@ Structured Incremental achieves a **~55× higher mean score** than Naïve Overwr
 
 ## Tech stack
 
-| Component | Choice |
-|-----------|--------|
-| LLM inference | [Ollama](https://ollama.com) — local, deterministic, no API cost |
-| Primary model | `qwen2.5:7b-instruct` |
-| Secondary model | `llama3.1:8b-instruct` (ablation) |
-| Embedder | `nomic-embed-text` via Ollama |
-| Config | YAML + Pydantic |
-| Logging | Append‑only JSONL per run |
-| Analysis | pandas, scipy, matplotlib, seaborn |
-| Language | Python 3.11+ |
+| Component              | Choice                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| LLM inference          | [Ollama](https://ollama.com) — local, deterministic, no API cost             |
+| Primary model          | `qwen2.5:7b-instruct`                                                      |
+| Secondary model        | `llama3.1:8b-instruct` (ablation)                                          |
+| Embedder               | `nomic-embed-text` via Ollama                                              |
+| Config                 | YAML + Pydantic                                                              |
+| Logging                | Append‑only JSONL per run                                                   |
+| Analysis               | pandas, scipy, matplotlib, seaborn                                           |
+| Language               | Python 3.11+                                                                |
 | Deterministic decoding | `temperature=0` (main experiment); sampled‑decoding control also included |
 
 All experiments are designed to run on a single consumer‑grade GPU. The full factorial sweep can be launched with a single command (see the *Reproducibility* section).
@@ -121,19 +130,19 @@ All experiments are designed to run on a single consumer‑grade GPU. The full f
 
 The project has reached **Phase 9 (Analysis and Paper-Ready Figures)** with full test coverage across modules.
 
-| Phase | What gets built | Status |
-|-------|----------------|--------|
-| 0 | Project scaffold, config system, dependency management | ✅ Completed |
-| 1 | Task environments with objective scoring | ✅ Completed |
-| 2 | Agent wrapper and Ollama client | ✅ Completed |
-| 3 | Three memory policies | ✅ Completed |
-| 4 | Logging and reproducibility layer | ✅ Completed |
-| 5 | Single‑agent baselines | ✅ Completed |
-| 6 | Shared broadcast channel & topologies (Ring, Broadcast) | ✅ Completed |
-| 7 | Poisoning condition & injection tracking | ✅ Completed |
-| 8 | Full multi‑agent experiment runner & rehydrator | ✅ Completed |
-| 9 | Analysis engine, quantitative aggregators & paper‑ready figures | ✅ Completed |
-| 10 | Final paper writeup | 🔄 In Progress |
+| Phase | What gets built                                                  | Status         |
+| ----- | ---------------------------------------------------------------- | -------------- |
+| 0     | Project scaffold, config system, dependency management           | ✅ Completed   |
+| 1     | Task environments with objective scoring                         | ✅ Completed   |
+| 2     | Agent wrapper and Ollama client                                  | ✅ Completed   |
+| 3     | Three memory policies                                            | ✅ Completed   |
+| 4     | Logging and reproducibility layer                                | ✅ Completed   |
+| 5     | Single‑agent baselines                                          | ✅ Completed   |
+| 6     | Shared broadcast channel & topologies (Ring, Broadcast)          | ✅ Completed   |
+| 7     | Poisoning condition & injection tracking                         | ✅ Completed   |
+| 8     | Full multi‑agent experiment runner & rehydrator                 | ✅ Completed   |
+| 9     | Analysis engine, quantitative aggregators & paper‑ready figures | ✅ Completed   |
+| 10    | Final paper writeup                                              | 🔄 In Progress |
 
 ---
 
@@ -141,7 +150,7 @@ The project has reached **Phase 9 (Analysis and Paper-Ready Figures)** with full
 
 The experiment can be reproduced by the following steps:
 
-1. **Clone the repository** (or download the zip).  
+1. **Clone the repository** (or download the zip).
 2. **Install dependencies** using either `conda` or `pip`:
 
    ```bash
@@ -157,26 +166,22 @@ The experiment can be reproduced by the following steps:
    .\venv\Scripts\activate   # Windows
    pip install -r requirements.txt
    ```
-
 3. **Download the model weights** via Ollama:
 
    ```bash
    ollama pull qwen2.5:7b-instruct
    ollama pull nomic-embed-text
    ```
-
 4. **Run the full sweep** (executes all factorial configurations and stores results under `runs/`):
 
    ```bash
    python scripts/run_experiments.py --config configs/experiment.yaml
    ```
-
 5. **Generate figures** and analysis:
 
    ```bash
    python scripts/generate_figures.py --output figures/
    ```
-
 6. **Run Test Suite**:
 
    ```bash
@@ -194,58 +199,20 @@ docker run --rm -v $(pwd):/workspace -w /workspace seam python scripts/run_exper
 
 ## Limitations
 
-- **Single‑model focus** – All results are obtained with `qwen2.5:7b-instruct`; generality to other architectures is untested.  
-- **Toy‑task scope** – The experiments use simplified grid‑world and game environments; real‑world LLM‑driven tasks may exhibit different dynamics.  
-- **Deterministic decoding only** – We present results under `temperature=0`; stochastic decoding could alter collapse and contamination rates.  
+- **Single‑model focus** – All results are obtained with `qwen2.5:7b-instruct`; generality to other architectures is untested.
+- **Toy‑task scope** – The experiments use simplified grid‑world and game environments; real‑world LLM‑driven tasks may exhibit different dynamics.
+- **Deterministic decoding only** – We present results under `temperature=0`; stochastic decoding could alter collapse and contamination rates.
 - **Poisoning model simplicity** – The seeded “non‑transferable lesson” is a manually crafted rule; more realistic poisoning vectors (e.g., fine‑tuned data, adversarial prompts) are not explored.
 
 ---
 
 ## Related work
 
-- **ACE** (Zhang et al., ICLR 2026) — context collapse and brevity bias in memory‑based evolution.  
-- **ReasoningBank** (Ouyang et al., Google 2026) — contrastive reasoning memory with test‑time scaling.  
-- **Memento** (Zhou et al., UCL 2025) — memory as a learned retrieval policy, not a static store.  
-- **RAGEN** (Wang et al., Northwestern 2025) — Echo Trap in multi‑turn RL self‑evolution.  
-- **OEP** (Wang et al., SJTU 2026) — locally‑correct but non‑transferable experience poisoning.  
-- **Zombie Agents** (Yang et al., NUS 2026) — self‑reinforcing persistent memory injection.  
-- **EvolveR** (Wang et al., arXiv:2510.16079) — full lifecycle treatment of agent experience.  
+- **ACE** (Zhang et al., ICLR 2026) — context collapse and brevity bias in memory‑based evolution.
+- **ReasoningBank** (Ouyang et al., Google 2026) — contrastive reasoning memory with test‑time scaling.
+- **Memento** (Zhou et al., UCL 2025) — memory as a learned retrieval policy, not a static store.
+- **RAGEN** (Wang et al., Northwestern 2025) — Echo Trap in multi‑turn RL self‑evolution.
+- **OEP** (Wang et al., SJTU 2026) — locally‑correct but non‑transferable experience poisoning.
+- **Zombie Agents** (Yang et al., NUS 2026) — self‑reinforcing persistent memory injection.
+- **EvolveR** (Wang et al., arXiv:2510.16079) — full lifecycle treatment of agent experience.
 - **Evo‑Memory** (arXiv:2511.20857) — benchmark for single‑agent memory evolution (the gap this project targets is its multi‑agent extension).
-
----
-
-## Contact
-
-**Uzair Arif**  
-GitHub: [https://github.com/uzairarif/SEAM](https://github.com/uzairarif/SEAM)
-
----  
-
-## References
-
-The full bibliography is maintained in `references.bib`. A few key entries are listed:
-
-```bibtex
-@inproceedings{zhang2026_ace,
-  author = {Zhang, Y. and Li, X. and Wu, J.},
-  title = {Context Collapse and Brevity Bias in Memory-Based Evolution},
-  booktitle = {ICLR},
-  year = {2026}
-}
-@inproceedings{ragren2025_echo,
-  author = {Ragen, M. and Patel, S.},
-  title = {Echo Trap in Multi‑Turn RL Self‑Evolution},
-  booktitle = {NeurIPS},
-  year = {2025}
-}
-@inproceedings{wang2026_oep,
-  author = {Wang, L. and Chen, H.},
-  title = {Locally‑Correct but Non‑Transferable Experience Poisoning},
-  booktitle = {AAAI},
-  year = {2026}
-}
-```
-
----  
-
-*August 2026 — Uzair Arif*
