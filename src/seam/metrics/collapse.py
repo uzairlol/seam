@@ -3,10 +3,27 @@
 from __future__ import annotations
 
 import math
+import re
 from collections import Counter
 from typing import Any
 
 from seam.agents.decoding import OllamaClient
+
+_HEADER_PATTERNS = [
+    r"===\s*[^=]+\s*===",
+    r"Rule\s*#?\d+:",
+    r"Observation:",
+    r"Action Taken:",
+    r"Reward Received:",
+    r"=== Shared Peer Memories ===",
+]
+_HEADER_RE = re.compile("|".join(_HEADER_PATTERNS), re.IGNORECASE)
+
+
+def _clean_memory_text(text: str) -> str:
+    """Remove boilerplate section headers and structural labels prior to metric computation."""
+    cleaned = _HEADER_RE.sub("", text).strip()
+    return " ".join(cleaned.split()) if cleaned else text.strip()
 
 
 def compute_ngram_counts(text: str, n: int = 2) -> Counter[tuple[str, ...]]:
@@ -19,7 +36,8 @@ def compute_ngram_counts(text: str, n: int = 2) -> Counter[tuple[str, ...]]:
     Returns:
         Counter of n-gram tuples.
     """
-    tokens = text.lower().split()
+    cleaned_text = _clean_memory_text(text)
+    tokens = cleaned_text.lower().split()
     if len(tokens) < n:
         return Counter()
     return Counter(zip(*[tokens[i:] for i in range(n)]))
@@ -37,7 +55,8 @@ def compute_self_bleu(memory_sequence: list[str], max_n: int = 2) -> float:
     Returns:
         Scalar Self-BLEU score in [0.0, 1.0].
     """
-    clean_seq = [m.strip() for m in memory_sequence if m.strip()]
+    clean_seq = [_clean_memory_text(m) for m in memory_sequence if m.strip()]
+    clean_seq = [m for m in clean_seq if m]
     if len(clean_seq) <= 1:
         return 1.0
 
