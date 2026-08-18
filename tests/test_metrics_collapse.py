@@ -35,6 +35,17 @@ def test_compute_self_bleu_diverse_sequences() -> None:
     assert score < 0.5
 
 
+def test_compute_self_bleu_strips_headers() -> None:
+    """Memory states with identical headers but different content should not yield high Self-BLEU."""
+    memories = [
+        "=== Curated Playbook Rules ===\n- Rule #1: Harvest food at position 2 2",
+        "=== Curated Playbook Rules ===\n- Rule #2: Avoid water hazard on left boundary",
+        "=== Curated Playbook Rules ===\n- Rule #3: Negotiate 50 50 split with peer agent",
+    ]
+    score = compute_self_bleu(memories)
+    assert score < 0.5
+
+
 def test_compute_cosine_similarity() -> None:
     """Test vector cosine similarity math."""
     v1 = [1.0, 0.0, 0.0]
