@@ -201,11 +201,11 @@ class BargainingGame(BaseEnv):
         proposer's share from 50 across all accepted deals.
 
         Returns:
-            Float in (0.0, 1.0].  Returns 1.0 (perfect) if no deals accepted.
+            Float in [0.0, 1.0]. Returns 0.0 if no deals are accepted.
         """
         if not self._accepted_deals:
-            # No accepted deals; return 1.0 (no unfairness observed)
-            return 1.0
+            # No accepted deals; negotiation breakdown -> score 0.0
+            return 0.0
         deviations = [abs(own - self._pie_size / 2) for own, _ in self._accepted_deals]
         mean_dev = sum(deviations) / len(deviations)
         return 1.0 / (1.0 + mean_dev)
