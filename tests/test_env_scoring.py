@@ -235,6 +235,15 @@ def test_bargaining_game_invalid_proposal_fallback() -> None:
     assert info["deal"]["proposed_split"] == [50, 50]
 
 
+def test_bargaining_game_no_accepted_deals_score_zero() -> None:
+    """If no deals are accepted, get_ground_truth_score() must return 0.0."""
+    env = BargainingGame(n_agents=2, episode_length=3, pie_size=100)
+    env.reset(seed=77)
+    for _ in range(3):
+        env.step({"agent_0": "90 10", "agent_1": "reject"})
+    assert env.get_ground_truth_score() == 0.0
+
+
 # ---------------------------------------------------------------------------
 # NumberGuessingGame tests
 # ---------------------------------------------------------------------------
