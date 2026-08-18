@@ -37,3 +37,26 @@ def test_poisoning_integration_with_runner():
     assert "peer_contamination_rate" in summary
     assert "per_agent_poison_adherence" in summary
     assert "agent_0" in summary["per_agent_poison_adherence"]
+
+
+def test_poison_propagation_into_peer_memories():
+    """Verify that peer agents ingest poison from shared context into internal memory state."""
+    cfg = ExperimentConfig(
+        experiment_id="test_poison_propagation",
+        description="Verify peer memory contamination propagation",
+        env=EnvConfig(type="number_guessing", n_agents=3, episode_length=3),
+        model=ModelConfig(model_name="dummy_model", base_url="http://localhost:11434"),
+        memory=MemoryConfig(policy="structured_incremental"),
+        sharing=SharingConfig(mode="broadcast", topology="full_broadcast", publish_every_n_rounds=1),
+        poisoning=PoisoningConfig(mode="internal", poison_agent_id="agent_0"),
+        seeds=[42],
+    )
+
+    mock_client = MagicMock()
+    mock_client.complete.return_value = ("100", 10)
+
+    with EpisodeRunner(config=cfg, seed=42, client=mock_client) as runner:
+        summary = runner.run()
+
+    # Shared poison rule from agent_0 should be ingested into peer memory policies
+    assert summary["peer_contamination_rate"] > 0.0

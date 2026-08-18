@@ -51,12 +51,14 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
     def update(
         self,
         step_experience: dict[str, Any],
+        shared_context: str = "",
         client: OllamaClient | None = None,
     ) -> str:
-        """Reflect on experience to add new rules or deprecate stale ones.
+        """Reflect on experience and shared peer context to update playbook rules.
 
         Args:
             step_experience: Dict with keys ``"observation"``, ``"action"``, ``"reward"``.
+            shared_context: Incoming peer memory text snippets.
             client: Optional LLM client for generating structured reflection.
 
         Returns:
@@ -69,15 +71,17 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
         current_rules_text = self.get_context()
 
         if client is not None:
+            shared_str = f"\n\n{shared_context}" if shared_context.strip() else ""
             prompt = (
                 "=== Current Playbook Rules ===\n"
                 f"{current_rules_text if current_rules_text else 'None'}\n\n"
                 "=== Recent Experience ===\n"
                 f"Observation: {obs}\n"
                 f"Action Taken: {action}\n"
-                f"Reward Received: {reward}\n\n"
+                f"Reward Received: {reward}"
+                f"{shared_str}\n\n"
                 "=== Task ===\n"
-                "Reflect on this outcome. If a new rule is learned, write 'ADD: <rule>'. "
+                "Reflect on this outcome and any shared peer memories. If a new rule is learned (from your experience or peer memory), write 'ADD: <rule>'. "
                 "If an existing rule failed, write 'DEPRECATE: Rule #<id>'. "
                 "Keep rules short and actionable."
             )
@@ -93,6 +97,14 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
                 self._add_rule(f"Action '{action}' yielded positive reward {reward:.2f}")
             else:
                 self._add_rule(f"Action '{action}' resulted in zero reward")
+
+            # Ingest shared peer messages in deterministic mode
+            if shared_context.strip():
+                for line in shared_context.splitlines():
+                    line_str = line.strip()
+                    if line_str and not line_str.startswith("==="):
+                        peer_rule = line_str.split("]: ", 1)[-1] if "]: " in line_str else line_str
+                        self._add_rule(peer_rule)
 
         self._prune_playbook()
         return self.get_context()

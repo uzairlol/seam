@@ -22,6 +22,7 @@ class BaseMemoryPolicy(ABC):
     def update(
         self,
         step_experience: dict[str, Any],
+        shared_context: str = "",
         client: OllamaClient | None = None,
     ) -> str:
         """Update memory given a new round experience step.

@@ -37,12 +37,14 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
     def update(
         self,
         step_experience: dict[str, Any],
+        shared_context: str = "",
         client: OllamaClient | None = None,
     ) -> str:
-        """Overwrite current memory with a reflection on the latest experience.
+        """Overwrite current memory with a reflection on the latest experience and shared peer context.
 
         Args:
             step_experience: Dict with keys ``"observation"``, ``"action"``, ``"reward"``.
+            shared_context: Incoming peer memory text snippets.
             client: Optional LLM client for generating reflection.
 
         Returns:
@@ -52,15 +54,17 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
         action = step_experience.get("action", "")
         reward = step_experience.get("reward", 0.0)
 
+        shared_str = f"\n\n{shared_context}" if shared_context.strip() else ""
         prompt = (
             "=== Previous Memory ===\n"
             f"{self._memory_text if self._memory_text else 'None'}\n\n"
             "=== Recent Experience ===\n"
             f"Observation: {obs}\n"
             f"Action Taken: {action}\n"
-            f"Reward Received: {reward}\n\n"
+            f"Reward Received: {reward}"
+            f"{shared_str}\n\n"
             "=== Task ===\n"
-            "Completely rewrite your memory reflection to guide future decisions. "
+            "Completely rewrite your memory reflection to guide future decisions based on your experience and shared peer memory. "
             "Keep it concise and actionable under 100 words."
         )
 
@@ -73,7 +77,12 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
                 self._memory_text = f"Last Action: {action} | Reward: {reward}"
         else:
             # Deterministic fallback when no LLM client is provided
-            self._memory_text = f"Last Action: {action} | Reward: {reward}"
+            base_mem = f"Last Action: {action} | Reward: {reward}"
+            if shared_context.strip():
+                peer_lines = [l.strip() for l in shared_context.splitlines() if l.strip() and not l.strip().startswith("===")]
+                if peer_lines:
+                    base_mem += " | Peer Memory: " + "; ".join(peer_lines)
+            self._memory_text = base_mem
 
         return self._memory_text
 
