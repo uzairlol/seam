@@ -51,12 +51,14 @@ class RawTrajectoryBufferPolicy(BaseMemoryPolicy):
     def update(
         self,
         step_experience: dict[str, Any],
+        shared_context: str = "",
         client: OllamaClient | None = None,
     ) -> str:
-        """Append latest step experience to sliding window buffer.
+        """Append latest step experience and shared peer context to sliding window buffer.
 
         Args:
             step_experience: Dict with keys ``"observation"``, ``"action"``, ``"reward"``.
+            shared_context: Incoming peer memory text snippets.
             client: Unused for raw trajectory policy (no LLM reflection).
 
         Returns:
@@ -68,6 +70,8 @@ class RawTrajectoryBufferPolicy(BaseMemoryPolicy):
             "action": str(step_experience.get("action", "")),
             "reward": float(step_experience.get("reward", 0.0)),
         }
+        if shared_context.strip():
+            entry["shared_peer_context"] = shared_context.strip()
         self._buffer.append(entry)
         return self.get_context()
 

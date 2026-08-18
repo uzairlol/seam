@@ -196,7 +196,10 @@ class EpisodeRunner:
                 ob = obs.get(aid, {})
 
                 experience = {"observation": ob, "action": act, "reward": rew}
-                updated_mem = self.memory_policies[aid].update(experience, client=self.client)
+                shared_ctx = self.sharing_engine.get_shared_context(aid)
+                updated_mem = self.memory_policies[aid].update(
+                    experience, shared_context=shared_ctx, client=self.client
+                )
 
                 per_agent_actions[aid].append(act)
                 per_agent_rewards[aid].append(rew)
