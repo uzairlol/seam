@@ -57,6 +57,7 @@ def test_run_logger_initialization(tmp_path: Path, experiment_config: Experiment
     assert meta["run_id"] == "run_001"
     assert meta["seed"] == 42
     assert meta["experiment_id"] == "test_logging_exp"
+    assert meta["topology"] == experiment_config.sharing.topology
 
 
 def test_run_logger_log_step_and_summary(tmp_path: Path, experiment_config: ExperimentConfig) -> None:

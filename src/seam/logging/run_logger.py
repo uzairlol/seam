@@ -62,6 +62,7 @@ class RunLogger:
             "model_name": self.config.model.model_name,
             "memory_policy": self.config.memory.policy,
             "sharing_mode": self.config.sharing.mode,
+            "topology": self.config.sharing.topology,
             "poisoning_mode": self.config.poisoning.mode,
         }
         save_json(metadata, self.metadata_file)
