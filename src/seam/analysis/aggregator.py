@@ -35,32 +35,31 @@ class ResultAggregator:
             except Exception as exc:
                 logger.warning("Could not read %s: %s — scanning subdirectories", summary_csv, exc)
 
-        # Fallback: scan subdirectories for summary.json files
+        # Fallback: scan subdirectories recursively for summary.json files
         records = []
         if self.runs_dir.exists():
-            for child in self.runs_dir.glob("*"):
-                if child.is_dir():
-                    summary_json = child / "summary.json"
-                    if summary_json.exists():
-                        try:
-                            rehydrator = RunRehydrator(child)
-                            meta = rehydrator.load_metadata()
-                            summary = rehydrator.load_summary()
-                            summary_info = summary.get("summary_info", {})
+            for summary_json in self.runs_dir.rglob("summary.json"):
+                run_dir = summary_json.parent
+                try:
+                    rehydrator = RunRehydrator(run_dir)
+                    meta = rehydrator.load_metadata()
+                    summary = rehydrator.load_summary()
+                    summary_info = summary.get("summary_info", {})
 
-                            records.append({
-                                "run_id": meta.get("run_id"),
-                                "experiment_id": meta.get("experiment_id"),
-                                "policy": meta.get("memory_policy"),
-                                "topology": meta.get("sharing_mode"),
-                                "poisoning_mode": meta.get("poisoning_mode"),
-                                "seed": meta.get("seed"),
-                                "final_score": summary.get("final_score", 0.0),
-                                "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
-                                "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
-                            })
-                        except Exception as exc:
-                            logger.debug("Failed to rehydrate %s: %s", child, exc)
+                    topo = meta.get("topology") if meta.get("topology") is not None else meta.get("sharing_mode")
+                    records.append({
+                        "run_id": meta.get("run_id"),
+                        "experiment_id": meta.get("experiment_id"),
+                        "policy": meta.get("memory_policy"),
+                        "topology": topo,
+                        "poisoning_mode": meta.get("poisoning_mode"),
+                        "seed": meta.get("seed"),
+                        "final_score": summary.get("final_score", 0.0),
+                        "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
+                        "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
+                    })
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("Failed to rehydrate %s: %s", run_dir, exc)
 
         return pd.DataFrame(records)
 
