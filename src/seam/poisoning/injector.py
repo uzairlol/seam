@@ -78,6 +78,9 @@ class PoisonInjector:
     def inject_channel(self, sharing_engine: MemorySharingEngine, round_num: int) -> bool:
         """Inject poison into the shared broadcast channel if mode is 'channel' or 'gradual'.
 
+        Poison is injected into ALL PEER agents' inboxes (not the seed agent's own inbox)
+        so that peer agents receive the contaminated memory during sharing.
+
         Args:
             sharing_engine: The :class:`MemorySharingEngine` instance.
             round_num: Current simulation round number.
@@ -86,20 +89,28 @@ class PoisonInjector:
             True if channel injection occurred.
         """
         if self.config.mode == "channel":
-            # Direct injection into broadcast channel for target_id
+            # Inject into all peer inboxes (everyone except the seed agent)
             target_id = self.config.poison_agent_id
-            if target_id in sharing_engine._shared_inboxes:
-                sharing_engine._shared_inboxes[target_id].append(
-                    f"[{target_id}]: {self.poison_payload}"
-                )
-                logger.info("PoisonInjector: Injected poison into channel for %s", target_id)
+            injected = False
+            for aid in sharing_engine.agent_ids:
+                if aid != target_id:
+                    sharing_engine._shared_inboxes[aid].append(
+                        f"[{target_id}]: {self.poison_payload}"
+                    )
+                    injected = True
+            if injected:
+                logger.info("PoisonInjector: Injected poison into channel for peers of %s", target_id)
                 return True
         elif self.config.mode == "gradual" and round_num >= 5:
             target_id = self.config.poison_agent_id
-            if target_id in sharing_engine._shared_inboxes:
-                sharing_engine._shared_inboxes[target_id].append(
-                    f"[{target_id}]: {self.poison_payload}"
-                )
-                logger.info("PoisonInjector: Injected gradual poison at round %d for %s", round_num, target_id)
+            injected = False
+            for aid in sharing_engine.agent_ids:
+                if aid != target_id:
+                    sharing_engine._shared_inboxes[aid].append(
+                        f"[{target_id}]: {self.poison_payload}"
+                    )
+                    injected = True
+            if injected:
+                logger.info("PoisonInjector: Injected gradual poison at round %d for peers of %s", round_num, target_id)
                 return True
         return False
