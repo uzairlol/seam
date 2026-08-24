@@ -43,4 +43,7 @@ def test_poison_injector_channel():
 
     injected = injector.inject_channel(engine, round_num=1)
     assert injected
-    assert "0 100" in engine.get_shared_context("agent_0")
+    # Poison should be injected into PEER agents' inboxes, not the seed agent's own
+    assert "0 100" in engine.get_shared_context("agent_1")
+    # Seed agent's inbox should NOT have the poison (it was the source)
+    assert "0 100" not in engine.get_shared_context("agent_0")
