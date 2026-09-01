@@ -46,8 +46,16 @@ def generate_experiment_grid(
     grid = []
     for policy in policies:
         for sharing in sharing_modes:
-            topology = "off" if sharing == "off" else ("full_broadcast" if sharing in ("broadcast", "full_broadcast") else sharing)
-            mode_str = "off" if sharing == "off" else "broadcast"
+            if sharing == "off":
+                mode_str, topology = "off", "off"
+            elif sharing in {"broadcast", "full_broadcast", "ring", "star", "cluster"}:
+                mode_str = "broadcast"
+                topology = "full_broadcast" if sharing == "broadcast" else sharing
+            elif sharing in {"selective", "peer_to_peer"}:
+                mode_str = sharing
+                topology = "full_broadcast"
+            else:
+                mode_str, topology = "broadcast", "full_broadcast"
 
             for poisoning in poisoning_modes:
                 for seed in seeds:

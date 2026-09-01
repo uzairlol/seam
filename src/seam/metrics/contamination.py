@@ -41,7 +41,11 @@ def detect_poison_phrases(memory_state: str, poison_keywords: list[str]) -> bool
 
     mem_lower = memory_state.lower()
     for kw in poison_keywords:
-        if kw.lower() in mem_lower:
+        phrase = kw.strip().lower()
+        if not phrase:
+            continue
+        pattern = re.compile(rf"(?<!\w){re.escape(phrase)}(?!\w)")
+        if pattern.search(mem_lower):
             return True
     return False
 

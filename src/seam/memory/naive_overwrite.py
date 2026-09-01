@@ -22,9 +22,20 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
         initial_memory: Optional initial memory string.
     """
 
-    def __init__(self, max_tokens: int = 256, initial_memory: str = "") -> None:
-        self.max_tokens = max_tokens
-        self._memory_text: str = initial_memory.strip()
+    def __init__(self, max_tokens: int | Any = 256, initial_memory: str = "") -> None:
+        self.max_tokens = getattr(max_tokens, "max_tokens", max_tokens)
+        self._memory_text: str = self._truncate_to_limit(initial_memory.strip())
+
+    def _truncate_to_limit(self, text: str) -> str:
+        """Enforce the configured token budget on memory strings."""
+        if not text:
+            return ""
+        max_tokens = int(getattr(self, "max_tokens", 256) or 256)
+        max_tokens = max(1, max_tokens)
+        tokens = text.split()
+        if len(tokens) <= max_tokens:
+            return text
+        return " ".join(tokens[:max_tokens]) + "..."
 
     def reset(self) -> None:
         """Clear memory text."""
@@ -71,10 +82,10 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
         if client is not None:
             try:
                 new_mem, _ = client.complete(prompt)
-                self._memory_text = new_mem.strip()
+                self._memory_text = self._truncate_to_limit(new_mem.strip())
             except Exception as exc:  # noqa: BLE001
                 logger.warning("LLM call failed during naive overwrite reflection: %s", exc)
-                self._memory_text = f"Last Action: {action} | Reward: {reward}"
+                self._memory_text = self._truncate_to_limit(f"Last Action: {action} | Reward: {reward}")
         else:
             # Deterministic fallback when no LLM client is provided
             base_mem = f"Last Action: {action} | Reward: {reward}"
@@ -82,7 +93,7 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
                 peer_lines = [l.strip() for l in shared_context.splitlines() if l.strip() and not l.strip().startswith("===")]
                 if peer_lines:
                     base_mem += " | Peer Memory: " + "; ".join(peer_lines)
-            self._memory_text = base_mem
+            self._memory_text = self._truncate_to_limit(base_mem)
 
         return self._memory_text
 

@@ -36,6 +36,7 @@ class BaseAgent:
         self.system_prompt = system_prompt or (
             "You are a helpful, rational agent acting in a multi-agent environment."
         )
+        self.last_prompt = ""
 
     def close(self) -> None:
         """Release resources held by this agent.
@@ -152,9 +153,9 @@ class BaseAgent:
             if cleaned.lower() == act.lower():
                 return act
 
-        # 2. Check for action keyword in the text (word boundary match)
+        # 2. Check for action keyword in the text using explicit token boundaries.
         for act in action_space:
-            pattern = rf"\b{re.escape(act)}\b"
+            pattern = rf"(?<![\w/]){re.escape(act)}(?![\w/])"
             if re.search(pattern, cleaned, re.IGNORECASE):
                 return act
 
@@ -192,6 +193,7 @@ class BaseAgent:
             Selected action string.
         """
         prompt = self.format_prompt(observation, action_space, memory_context)
+        self.last_prompt = prompt
         fallback = default_action or (action_space[0] if action_space else "stay")
 
         try:

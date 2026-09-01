@@ -139,17 +139,27 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
             if dep_match:
                 self._deprecate_rule(int(dep_match.group(1)))
 
-        # Fallback if LLM output didn't contain explicit keywords
+        # Accept short, direct action-like outputs as valid rule fragments while
+        # ignoring conversational prose that is not a valid playbook directive.
         if not any(k in response_text for k in ("ADD:", "DEPRECATE:")):
-            self._add_rule(response_text[:120])
+            clean = response_text.strip()
+            words = re.findall(r"[A-Za-z0-9_\-./ ]+", clean)
+            if clean and len(words) == 1 and len(clean.split()) <= 3:
+                self._add_rule(clean)
+                return
+            if clean and re.fullmatch(r"[A-Za-z0-9_\-./\s]+", clean) and len(clean.split()) <= 4:
+                self._add_rule(clean)
+                return
+            logger.warning("StructuredIncrementalPolicy ignored non-rule response: %s", clean[:120])
 
     def _prune_playbook(self) -> None:
-        """Keep active rules within max_playbook_entries, dropping oldest active rules."""
+        """Keep active rules within max_playbook_entries and purge deprecated entries."""
         active_entries = [e for e in self._playbook if e.get("status") == "active"]
         if len(active_entries) > self.max_playbook_entries:
             excess = len(active_entries) - self.max_playbook_entries
             for entry in active_entries[:excess]:
                 entry["status"] = "deprecated"
+        self._playbook = [e for e in self._playbook if e.get("status") != "deprecated"]
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize state."""

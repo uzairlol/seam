@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gc
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -47,12 +48,12 @@ class EpisodeRunner:
     def __init__(
         self,
         config: ExperimentConfig,
-        seed: int,
+        seed: int | None = None,
         client: OllamaClient | None = None,
         base_dir: str | Path = "runs",
     ) -> None:
         self.config = config
-        self.seed = seed
+        self.seed = seed if seed is not None else (config.seeds[0] if config.seeds else 0)
         self.client = client
         self.logger_inst = RunLogger(config=config, seed=seed, base_dir=base_dir)
 
@@ -151,6 +152,10 @@ class EpisodeRunner:
 
         per_agent_actions: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
         per_agent_rewards: dict[str, list[float]] = {aid: [] for aid in self.population.agent_ids}
+        # Store local memory only (before shared context is prepended) for Self-BLEU
+        # to measure intra-agent temporal collapse, not cross-agent convergence via sharing
+        per_agent_local_memories: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
+        # Store combined memory for logging/debugging
         per_agent_memories: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
 
         done = False
@@ -167,8 +172,10 @@ class EpisodeRunner:
 
             # Get combined memory contexts (local policy + shared peer context)
             memory_contexts = {}
+            local_contexts = {}
             for aid, policy in self.memory_policies.items():
                 local_ctx = policy.get_context()
+                local_contexts[aid] = local_ctx
                 shared_ctx = self.sharing_engine.get_shared_context(aid)
                 if shared_ctx:
                     memory_contexts[aid] = f"{local_ctx}\n\n{shared_ctx}" if local_ctx else shared_ctx
@@ -194,6 +201,8 @@ class EpisodeRunner:
                 act = actions[aid]
                 rew = rewards.get(aid, 0.0)
                 ob = obs.get(aid, {})
+                agent = self.population.get_agent(aid)
+                prompt = getattr(agent, "last_prompt", "")
 
                 experience = {"observation": ob, "action": act, "reward": rew}
                 shared_ctx = self.sharing_engine.get_shared_context(aid)
@@ -203,13 +212,16 @@ class EpisodeRunner:
 
                 per_agent_actions[aid].append(act)
                 per_agent_rewards[aid].append(rew)
+                # Store local memory (before shared context) for Self-BLEU
+                per_agent_local_memories[aid].append(local_contexts[aid])
+                # Store combined memory for logging
                 per_agent_memories[aid].append(updated_mem)
 
                 self.logger_inst.log_step(
                     round_num=round_num,
                     agent_id=aid,
                     observation=ob,
-                    prompt="",  # BaseAgent formats prompts internally
+                    prompt=prompt,
                     raw_response=act,
                     action=act,
                     reward=rew,
@@ -223,8 +235,10 @@ class EpisodeRunner:
         ground_truth_score = self.env.get_ground_truth_score()
         cumulative_rewards = {aid: sum(rews) for aid, rews in per_agent_rewards.items()}
 
+        # Self-BLEU computed on local memory only (without shared peer context)
+        # to measure intra-agent temporal collapse, not cross-agent convergence via sharing
         per_agent_self_bleu = {
-            aid: compute_self_bleu(mems) for aid, mems in per_agent_memories.items()
+            aid: compute_self_bleu(mems) for aid, mems in per_agent_local_memories.items()
         }
         per_agent_action_entropy = {
             aid: compute_action_entropy(acts) for aid, acts in per_agent_actions.items()
@@ -235,19 +249,16 @@ class EpisodeRunner:
 
         # Contamination metrics
         poison_payload = self.poison_injector.poison_payload
-        poison_target_map = {
-            "number_guessing": ["100"],
-            "bargaining_game": ["0 100", "100"],
-            "resource_foraging": ["stay"],
-        }
-        poison_keywords = poison_target_map.get(
-            self.config.env.type.lower().strip(), ["100", "stay"]
-        )
+        quoted_phrases = re.findall(r"['\"]([^'\"]+)['\"]", poison_payload)
+        extracted_keywords = [phrase.strip() for phrase in quoted_phrases if phrase.strip()]
+        if not extracted_keywords:
+            extracted_keywords = [piece.strip() for piece in re.findall(r"\b\d+\s+\d+\b|\b\d+\b|\b[A-Za-z]+\b", poison_payload) if piece.strip()]
+        poison_keywords = sorted({kw.lower() for kw in extracted_keywords if kw.strip()})
         peer_contamination_rate = compute_contamination_rate(
             per_agent_memories=per_agent_memories,
             poison_keywords=poison_keywords,
             seed_agent_id=self.config.poisoning.poison_agent_id,
-        ) if self.poison_injector.is_active else 0.0
+        ) if self.poison_injector.is_active and self.sharing_engine.is_active else 0.0
 
         per_agent_poison_adherence = {
             aid: compute_poison_adherence(acts, target_pattern=poison_payload)
