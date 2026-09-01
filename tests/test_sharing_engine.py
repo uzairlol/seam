@@ -50,8 +50,8 @@ def test_sharing_engine_broadcast():
 
 
 test_sharing_engine_cadence_data = [
-    (1, 0),  # Round 1 (not publish round) -> 0 messages
-    (2, 3),  # Round 2 (publish round) -> 3 messages
+    (1, 3),  # Round 1 should publish on the first interval
+    (2, 0),  # Round 2 should wait until the next publish cadence
 ]
 
 

@@ -41,8 +41,13 @@ class OllamaClient:
     def close(self) -> None:
         """Close underlying HTTP client connection pool to free system RAM and sockets."""
         try:
-            if hasattr(self._client, "_client") and hasattr(self._client._client, "close"):
-                self._client._client.close()
+            http_client = (
+                getattr(self._client, "_client", None)
+                or getattr(self._client, "client", None)
+                or getattr(self._client, "http_client", None)
+            )
+            if http_client is not None and hasattr(http_client, "close"):
+                http_client.close()
             elif hasattr(self._client, "close"):
                 self._client.close()
         except Exception as exc:  # noqa: BLE001

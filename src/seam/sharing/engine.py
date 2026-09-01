@@ -42,6 +42,15 @@ class MemorySharingEngine:
         """Return True if sharing mode is enabled."""
         return self.config.mode != "off"
 
+    def add_to_inbox(self, agent_id: str, message: str) -> bool:
+        """Append a message to a specific agent's shared inbox safely."""
+        if agent_id not in self._shared_inboxes:
+            return False
+        if message:
+            self._shared_inboxes[agent_id].append(message)
+            return True
+        return False
+
     def step(
         self,
         round_num: int,
@@ -62,8 +71,8 @@ class MemorySharingEngine:
         if not self.is_active:
             return counts
 
-        # Check publishing cadence
-        if round_num % self.config.publish_every_n_rounds != 0:
+        publish_every = max(1, self.config.publish_every_n_rounds)
+        if (round_num - 1) % publish_every != 0:
             return counts
 
         # 1. Collect published memory context from each agent
@@ -126,9 +135,10 @@ class MemorySharingEngine:
         self.clear()
 
     def _truncate_artifact(self, text: str) -> str:
-        """Truncate published memory text to respect max_artifact_tokens budget."""
-        max_chars = self.config.max_artifact_tokens * 4  # ~4 chars per token rule of thumb
+        """Truncate published memory text to respect the configured token budget."""
         text_clean = text.strip().replace("\n", " ")
-        if len(text_clean) > max_chars:
-            return text_clean[:max_chars] + "..."
-        return text_clean
+        tokens = text_clean.split()
+        max_tokens = max(1, self.config.max_artifact_tokens)
+        if len(tokens) <= max_tokens:
+            return text_clean
+        return " ".join(tokens[:max_tokens]) + "..."

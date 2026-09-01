@@ -194,11 +194,11 @@ class BargainingGame(BaseEnv):
         }
 
 
-    def get_ground_truth_score(self) -> float:
+    def get_fairness_score(self) -> float:
         """Return a fairness score: ``1 / (1 + mean_deviation_from_50)``.
 
-        Where ``mean_deviation_from_50`` is the mean absolute deviation of the
-        proposer's share from 50 across all accepted deals.
+        This measures how close accepted proposals are to a 50/50 split and is
+        therefore a fairness metric rather than a general performance metric.
 
         Returns:
             Float in [0.0, 1.0]. Returns 0.0 if no deals are accepted.
@@ -209,6 +209,10 @@ class BargainingGame(BaseEnv):
         deviations = [abs(own - self._pie_size / 2) for own, _ in self._accepted_deals]
         mean_dev = sum(deviations) / len(deviations)
         return 1.0 / (1.0 + mean_dev)
+
+    def get_ground_truth_score(self) -> float:
+        """Backward-compatible alias for the bargaining fairness metric."""
+        return self.get_fairness_score()
 
     def render(self) -> str:
         """Return a human-readable game state string.

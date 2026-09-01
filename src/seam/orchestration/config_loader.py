@@ -71,7 +71,7 @@ class ExperimentConfig(BaseModel):
     memory: MemoryConfig
     sharing: SharingConfig
     poisoning: PoisoningConfig
-    seeds: list[int]
+    seeds: list[int] = [42]
 
 
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
