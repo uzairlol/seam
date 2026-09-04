@@ -45,6 +45,9 @@ class RawTrajectoryBufferPolicy(BaseMemoryPolicy):
             act = exp.get("action", "")
             rew = exp.get("reward", 0.0)
             lines.append(f"Step {idx}: Obs={obs} -> Action='{act}' -> Reward={rew:.2f}")
+            shared_context = exp.get("shared_peer_context", "")
+            if shared_context:
+                lines.append(str(shared_context))
 
         return "\n".join(lines)
 

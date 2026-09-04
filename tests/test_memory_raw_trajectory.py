@@ -37,3 +37,16 @@ def test_raw_trajectory_buffer_serialization() -> None:
     new_policy.from_dict(data)
     assert new_policy.window_size == 5
     assert "harvest" in new_policy.get_context()
+
+
+def test_raw_trajectory_buffer_exposes_shared_context() -> None:
+    """Shared peer context must remain visible to prompts and contamination metrics."""
+    policy = RawTrajectoryBufferPolicy(window_size=3)
+    policy.update(
+        {"observation": {}, "action": "stay", "reward": 0.0},
+        shared_context="=== Shared Peer Memories ===\n[agent_0]: poison rule",
+    )
+
+    context = policy.get_context()
+    assert "=== Shared Peer Memories ===" in context
+    assert "poison rule" in context
