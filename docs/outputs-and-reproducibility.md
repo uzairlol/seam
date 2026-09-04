@@ -65,3 +65,18 @@ The experiment-level CSV and manifest should contain the same completed-run coun
 - Preserve raw run directories alongside aggregate tables.
 - Separate pre-fix and post-fix results; never pool them.
 - Run the test suite before changing the interpretation of a result.
+
+## Useful inspection pattern
+
+For a single run, inspect files in this order:
+
+1. `metadata.json` for run ID, environment, seed, model, policy, topology, and poisoning mode.
+2. `config_snapshot.yaml` for the complete Pydantic configuration captured at initialization.
+3. `summary.json` for final metrics and completion timestamp.
+4. `events.jsonl` for per-agent, per-round behavior and prompt/memory evidence.
+
+The rehydrator can load metadata, configuration, events, and summary independently and can convert events into a pandas DataFrame. Missing metadata/configuration is an integrity failure; missing events can be valid only for a deliberately minimal artifact, not for a normal completed episode.
+
+## Version and model controls
+
+The repository provides helpers for obtaining a short Git commit hash and `pip freeze`, but callers must explicitly record or inspect those values. A manuscript-quality run record should also preserve the exact Ollama model tag, base URL, decoding parameters, environment settings, seed list, and source commit. Changing any of these can change results even when the nominal experiment condition is unchanged.

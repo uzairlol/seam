@@ -35,3 +35,15 @@ The runner keeps local policy context separate from the shared context when cons
 ## What to report
 
 For every policy comparison, report the policy configuration, max memory limits, model, episode length, sharing settings, and seed count. A policy's observed performance cannot be interpreted independently of the amount and form of context it receives.
+
+## Serialization
+
+The three policies serialize different state shapes. Naive overwrite stores the policy name, configured maximum, and one `memory_text`. Raw trajectory stores a list of experience dictionaries and its window size. Structured incremental stores rule dictionaries, maximum active entries, and the next rule ID. These representations are useful for debugging but are not automatically written as standalone checkpoints by the runner; the active memory state is included in each logged event.
+
+## Update timing
+
+The runner computes the local context before action selection. After the environment step, it updates memory using the just-observed experience and the current shared context. Thus a peer artifact received in a round can affect both that round's action prompt and the subsequent local memory update. This ordering should be stated when discussing whether sharing influences action selection, memory formation, or both.
+
+## Policy comparison limits
+
+Naive overwrite uses an LLM reflection call when a client is present; raw trajectory does not call the LLM for memory updates; structured incremental may call the LLM for rule directives. A comparison therefore changes both memory representation and the number/type of model calls. The manuscript should report this computational asymmetry rather than presenting the policies as equal-cost mechanisms.

@@ -54,3 +54,11 @@ Each environment computes an objective score from its own state. No LLM judge is
 ## Claim discipline
 
 A result should identify its environment, policy, topology, poisoning mode, model, episode length, seed set, and whether it was generated before or after a code fix. A high-level project claim is not evidence until it can be traced to run-level artifacts and the current aggregation procedure.
+
+## Research unit
+
+The basic unit of analysis is one **episode run**: one environment, one model configuration, one memory policy per agent, one sharing configuration, one poisoning configuration, and one seed. A condition is a group of runs that share the non-seed factors. The aggregate table summarizes conditions; it does not replace the run-level observations.
+
+## What the project does not claim by default
+
+SEAM does not automatically establish that sharing causes a performance change, that high Self-BLEU proves cognitive collapse, or that phrase presence proves semantic adoption of poison. Those claims require additional controls or analyses. The current design supports controlled descriptive comparisons and targeted sanity checks; causal and semantic claims need to be stated with care.

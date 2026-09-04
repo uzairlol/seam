@@ -19,3 +19,13 @@ Shared Evolving Agent Memory (SEAM) studies how memory-update policies and peer-
 ## Source of truth
 
 The implementation under `src/seam/` and the executable scripts under `scripts/` are authoritative for current behavior. The root [README](../README.md) contains the research narrative, but some high-level claims and command examples may describe earlier or intended interfaces. When a discrepancy exists, verify against the code and run artifacts.
+
+## Documentation conventions
+
+Each document separates three kinds of statements:
+
+- **Implemented behavior:** directly supported by a source module, test, or saved artifact.
+- **Interpretation:** a reasonable explanation of what an implemented measure may indicate.
+- **Proposal:** a future experiment or metric that is not currently emitted by the runner.
+
+Source paths in this documentation are relative to the repository root. Run artifacts are data products and should be interpreted together with their `config_snapshot.yaml`, `metadata.json`, `events.jsonl`, and `summary.json` files.

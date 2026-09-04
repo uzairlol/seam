@@ -56,3 +56,17 @@ The generated Markdown table reports mean and confidence interval. It does not r
 ## Proposed but not currently emitted
 
 Project-scope documents also discuss propagation latency, semantic poison similarity, regret, inter-agent reward variance, and per-round contamination trajectories. These require implementation and validation before appearing as empirical claims.
+
+## Formula summary
+
+For a condition with run values $x_1,\ldots,x_n$, the reported mean is
+
+$$
+\bar{x}=\frac{1}{n}\sum_{i=1}^{n}x_i.
+$$
+
+For $n>1$, the current implementation estimates the standard error as $s/\sqrt{n}$ and uses a two-sided 95% Student-$t$ interval with $n-1$ degrees of freedom. For a single run, the interval half-width is set to zero. The displayed intervals are clipped to `[0, 1]`, which is appropriate for the current bounded metrics but would be inappropriate for an unbounded metric without changing the code.
+
+## Metric sequence versus scalar
+
+The runner stores scalar mean Self-BLEU and scalar contamination rate per run, but action entropy and memory length are sequences over rounds/windows. The standard experiment-level CSV therefore cannot show their full trajectories. Use `events.jsonl` or a custom analysis for temporal plots.

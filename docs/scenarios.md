@@ -48,3 +48,11 @@ This is the simplest validation environment for action parsing, feedback use, an
 ## Cross-scenario comparability
 
 Scores are normalized or bounded within each environment, but their semantics differ. Do not pool raw scores across scenarios without identifying the environment. Compare policies within a scenario first, then discuss cross-scenario patterns cautiously.
+
+## Environment contract in practice
+
+Each reset returns keys such as `agent_0`, `agent_1`, and so on, matching the population and sharing-engine IDs. Each step returns four objects: a per-agent observation mapping, a per-agent reward mapping, a boolean `done`, and an `info` dictionary. The `info` dictionary is diagnostic rather than an action input; examples include feedbacks and secret visibility at episode termination for number guessing, deal information for bargaining, and collision/spawn totals for foraging.
+
+## Determinism boundary
+
+The environments use seeded NumPy generators for their task state, while the project-level reproducibility helper seeds Python's `random` module and NumPy's global RNG. Model responses can still affect a run unless the Ollama model, decoding options, and server behavior are held constant. Therefore, “same seed” means deterministic task initialization and project RNG setup, not a guarantee of identical output across changed model/runtime configurations.

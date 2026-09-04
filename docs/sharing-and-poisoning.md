@@ -54,3 +54,15 @@ A basic validation should show:
 - ring: propagation constrained by local neighborhood reachability.
 
 Unexpected violations of this pattern should trigger an artifact and event-log audit before interpreting means.
+
+## Direction of an edge
+
+The adjacency matrix is defined so entry `(i, j) == 1` means receiver `i` receives from sender `j`. For a ring, each agent receives from its two numerical neighbors modulo `n`. For full broadcast, every off-diagonal entry is one. For the built-in cluster topology, agents are split into two halves and communicate only within their half; there is no cross-cluster bridge.
+
+## Inbox replacement versus injection
+
+Normal `step()` routing replaces each inbox with the messages produced by that publish event. Poison injection uses the engine's public inbox method to append a message to peer inboxes. Consequently, the order of injection and routing matters: the runner injects channel poison before calling `step()`, so a later normal routing operation can replace that injected message if the condition does not otherwise preserve it. Internal poisoning avoids this route because it begins in the seed policy's local state.
+
+## Contamination interpretation
+
+Detection is intentionally conservative about word boundaries but still lexical. A peer may contain a phrase because it copied a message, because its policy summarized it, or because the same phrase arose independently. The current metric cannot distinguish those mechanisms or establish that the phrase changed the peer's action policy.
