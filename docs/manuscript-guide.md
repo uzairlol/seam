@@ -54,3 +54,15 @@ For each manuscript claim, record:
 - Explain near-1 Self-BLEU values with memory length and action entropy.
 - Report failed or missing runs transparently.
 - Separate implementation facts from hypotheses and future work.
+
+## Methods details that are easy to omit
+
+Include the action parser and fallback behavior, not only the prompt text. State that observations are passed as Python dictionary string representations, that the first ten action labels are shown in the generic prompt, and that role-specific bargaining instructions alter the requested output format. Report that memory sharing is periodic rather than necessarily every round, and give the exact cadence and artifact budget.
+
+## Results table minimum
+
+Every main result table should identify environment, policy, topology, poisoning mode, number of agents, episode length, model tag, seed count, mean, uncertainty interval, and the unit of analysis. If a figure omits an interaction or uses a subset of conditions, say so in its caption. Keep a separate table of excluded or incomplete runs.
+
+## Reproducibility appendix
+
+An appendix should include the exact CLI commands, model configuration, environment configuration, poison payload, seed list, code commit, aggregation command, and a directory manifest. The raw event logs should remain available even when the paper only reports aggregate summaries.

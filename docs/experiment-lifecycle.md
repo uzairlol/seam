@@ -49,3 +49,15 @@ For each environment, the number of expected experiment runs is:
 `number of policies x number of topologies x number of poisoning modes x number of seeds`.
 
 For the standard 3 x 3 x 2 grid and seeds 42-49, this is 144 runs. For only seeds 45-49, it is 90 runs. Baseline expectations are 3 policies x number of seeds.
+
+## Failure and completion behavior
+
+The run logger creates the run directory early, then appends one JSON object per agent step to `events.jsonl`. The final `summary.json` is written only when `log_episode_end()` is reached. A directory with metadata and partial events but no summary should be treated as incomplete, even if its name looks like a completed run.
+
+## Counting events
+
+For a run with `A` agents and `R` completed rounds, the expected event count is normally `A * R`. Early success can make `R` smaller than the configured maximum. This count is a useful low-cost integrity check, but it does not prove that prompts, actions, observations, and memory updates were semantically correct.
+
+## Analysis precedence
+
+The aggregator's CSV-first behavior is deliberate for speed but creates a reproducibility hazard when a CSV predates additional run folders. A robust workflow is to finish all runs, verify folder counts and summaries, then regenerate the experiment-level CSV/manifest and figures in a separate analysis step.

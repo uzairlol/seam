@@ -33,3 +33,24 @@ A 100% contamination rate means every peer had at least one detected phrase some
 ## Reporting recommendation
 
 Keep an audit table beside the manuscript data that lists commit, run date, model tag, seed set, condition count, missing runs, and analysis command. This makes it possible to distinguish a scientific result from an artifact of an older implementation.
+
+## Practical audit record
+
+For each result release, preserve:
+
+| Field | Example meaning |
+|---|---|
+| Source commit | Code version that produced the runs |
+| Model tag | Exact Ollama model identifier |
+| Environments | Scenario directories included |
+| Conditions | Policy/topology/poisoning combinations |
+| Seeds | Exact seed values, not only count |
+| Completed runs | Number of valid `summary.json` files |
+| Exclusions | Missing, interrupted, or invalid folders |
+| Analysis command | Exact figure/table generation command |
+
+This record should be generated or maintained before manuscript tables are copied into prose. It is especially important because an experiment directory can contain valid run folders while its cached `results_summary.csv` or `manifest.json` still describes an earlier subset.
+
+## Distinguishing a code error from a result pattern
+
+A surprising result is not automatically a bug. First check the saved configuration and event sequence, then compare against a clean control and sharing-off control. A likely implementation error is indicated when an invariant is violated, such as contamination in a clean run, peer contamination with sharing disabled, a missing condition row, or an incomplete event count. A legitimate result may instead show high variance, early episode termination, or a policy-specific response pattern while preserving those invariants.
