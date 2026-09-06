@@ -8,9 +8,13 @@ import tempfile
 import pandas as pd
 
 from seam.analysis.plotting import (
+    plot_collapse_performance_tradeoff,
     plot_contamination_propagation,
+    plot_metric_condition_heatmap,
     plot_memory_collapse,
     plot_performance_comparison,
+    plot_poisoning_performance_comparison,
+    plot_run_level_distributions,
 )
 
 
@@ -49,10 +53,27 @@ def test_plotting_routines():
         p1 = plot_performance_comparison(df_sample, tmp_path / "perf.png")
         p2 = plot_memory_collapse(df_sample, tmp_path / "collapse.png")
         p3 = plot_contamination_propagation(df_sample, tmp_path / "contam.png")
+        p4 = plot_metric_condition_heatmap(df_sample, tmp_path / "heatmap.png")
+        p5 = plot_poisoning_performance_comparison(df_sample, tmp_path / "poison.png")
+        p6 = plot_collapse_performance_tradeoff(df_sample, tmp_path / "tradeoff.png")
+        p7 = plot_run_level_distributions(df_sample, tmp_path / "distributions.png")
 
-        assert p1.exists()
-        assert p2.exists()
-        assert p3.exists()
+        assert all(path.exists() for path in (p1, p2, p3, p4, p5, p6, p7))
+
+
+def test_new_plotting_routines_handle_missing_columns() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        incomplete = pd.DataFrame({"policy": ["naive_overwrite"]})
+
+        outputs = [
+            plot_metric_condition_heatmap(incomplete, tmp_path / "heatmap.png"),
+            plot_poisoning_performance_comparison(incomplete, tmp_path / "poison.png"),
+            plot_collapse_performance_tradeoff(incomplete, tmp_path / "tradeoff.png"),
+            plot_run_level_distributions(incomplete, tmp_path / "distributions.png"),
+        ]
+
+        assert all(path.exists() for path in outputs)
 
 
 def test_generate_figures_exports_summary_statistics():

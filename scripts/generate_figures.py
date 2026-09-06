@@ -8,9 +8,13 @@ from pathlib import Path
 
 from seam.analysis.aggregator import ResultAggregator
 from seam.analysis.plotting import (
+    plot_collapse_performance_tradeoff,
     plot_contamination_propagation,
+    plot_metric_condition_heatmap,
     plot_memory_collapse,
     plot_performance_comparison,
+    plot_poisoning_performance_comparison,
+    plot_run_level_distributions,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -41,6 +45,10 @@ def generate_figures(input_dir: str = "runs/experiments", figures_dir: str = "fi
     plot_performance_comparison(df, fig_path / "performance_comparison.png")
     plot_memory_collapse(df, fig_path / "memory_collapse.png")
     plot_contamination_propagation(df, fig_path / "contamination_propagation.png")
+    plot_metric_condition_heatmap(df, fig_path / "metric_condition_heatmap.png")
+    plot_poisoning_performance_comparison(df, fig_path / "poisoning_performance_comparison.png")
+    plot_collapse_performance_tradeoff(df, fig_path / "collapse_performance_tradeoff.png")
+    plot_run_level_distributions(df, fig_path / "run_level_distributions.png")
 
     # 2. Export Markdown Table
     stats_df = aggregator.aggregate_conditions()
