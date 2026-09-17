@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -38,7 +38,9 @@ def test_base_agent_format_prompt(model_config: ModelConfig) -> None:
     assert "harvest" in prompt_no_mem
     assert "Memory & Strategies" not in prompt_no_mem
 
-    prompt_with_mem = agent.format_prompt(obs, action_space, memory_context="Always harvest when on resource!")
+    prompt_with_mem = agent.format_prompt(
+        obs, action_space, memory_context="Always harvest when on resource!"
+    )
     assert "Memory & Strategies" in prompt_with_mem
     assert "Always harvest when on resource!" in prompt_with_mem
 
@@ -70,7 +72,9 @@ def test_base_agent_extract_action_fallback(model_config: ModelConfig) -> None:
     agent = BaseAgent(agent_id="agent_0", model_config=model_config, client=mock_client)
     action_space = ["up", "down", "harvest", "stay"]
 
-    extracted = agent.extract_action("Grounded explanation without valid action words.", action_space, default_action="stay")
+    extracted = agent.extract_action(
+        "Grounded explanation without valid action words.", action_space, default_action="stay"
+    )
     assert extracted == "stay"
 
 

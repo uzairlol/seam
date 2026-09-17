@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from seam.memory.base_memory import BaseMemoryPolicy
 from seam.orchestration.config_loader import PoisoningConfig
@@ -40,7 +39,11 @@ class PoisonInjector:
                 with open(self.config.poison_file, "r", encoding="utf-8") as f:
                     return f.read().strip()
             except Exception as exc:
-                logger.warning("Could not read poison_file '%s': %s — using default", self.config.poison_file, exc)
+                logger.warning(
+                    "Could not read poison_file '%s': %s — using default",
+                    self.config.poison_file,
+                    exc,
+                )
 
         return DEFAULT_POISON_PAYLOADS.get(self.env_type, DEFAULT_POISON_PAYLOADS["default"])
 
@@ -79,7 +82,9 @@ class PoisonInjector:
         """Inject a poison payload into the inboxes of every peer agent."""
         injected = False
         for aid in sharing_engine.agent_ids:
-            if aid != target_id and sharing_engine.add_to_inbox(aid, f"[{target_id}]: {self.poison_payload}"):
+            if aid != target_id and sharing_engine.add_to_inbox(
+                aid, f"[{target_id}]: {self.poison_payload}"
+            ):
                 injected = True
         return injected
 
@@ -100,10 +105,16 @@ class PoisonInjector:
 
         if self.config.mode == "channel":
             if self._inject_for_peers(sharing_engine, target_id):
-                logger.info("PoisonInjector: Injected poison into channel for peers of %s", target_id)
+                logger.info(
+                    "PoisonInjector: Injected poison into channel for peers of %s", target_id
+                )
                 return True
         elif self.config.mode == "gradual" and round_num >= 5:
             if self._inject_for_peers(sharing_engine, target_id):
-                logger.info("PoisonInjector: Injected gradual poison at round %d for peers of %s", round_num, target_id)
+                logger.info(
+                    "PoisonInjector: Injected gradual poison at round %d for peers of %s",
+                    round_num,
+                    target_id,
+                )
                 return True
         return False

@@ -59,7 +59,6 @@ def save_json(data: dict[str, Any], path: str | Path) -> None:
         json.dump(data, fh, indent=2, ensure_ascii=False)
 
 
-
 def write_jsonl(records: list[dict[str, Any]], path: str | Path, *, append: bool = True) -> None:
     """Write a list of dicts to a JSONL file.
 

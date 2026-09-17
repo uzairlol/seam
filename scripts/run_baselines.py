@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import gc
 import logging
-from pathlib import Path
 
 from seam.orchestration.config_loader import (
     EnvConfig,
@@ -99,7 +98,9 @@ def main() -> None:
     parser.add_argument("--outdir", type=str, default="runs/baselines", help="Output directory")
     args = parser.parse_args()
 
-    run_baselines(env_type=args.env, model_name=args.model, seeds=args.seeds, output_dir=args.outdir)
+    run_baselines(
+        env_type=args.env, model_name=args.model, seeds=args.seeds, output_dir=args.outdir
+    )
 
 
 if __name__ == "__main__":

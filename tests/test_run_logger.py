@@ -29,15 +29,10 @@ def experiment_config() -> ExperimentConfig:
             base_url="http://localhost:11434",
         ),
         memory=MemoryConfig(policy="naive_overwrite"),
-
         sharing=SharingConfig(mode="off"),
         poisoning=PoisoningConfig(mode="clean"),
-
         seeds=[42],
     )
-
-
-
 
 
 def test_run_logger_initialization(tmp_path: Path, experiment_config: ExperimentConfig) -> None:
@@ -60,7 +55,9 @@ def test_run_logger_initialization(tmp_path: Path, experiment_config: Experiment
     assert meta["topology"] == experiment_config.sharing.topology
 
 
-def test_run_logger_log_step_and_summary(tmp_path: Path, experiment_config: ExperimentConfig) -> None:
+def test_run_logger_log_step_and_summary(
+    tmp_path: Path, experiment_config: ExperimentConfig
+) -> None:
     """log_step appends valid JSONL lines and log_episode_end writes summary.json."""
     logger_inst = RunLogger(
         config=experiment_config,

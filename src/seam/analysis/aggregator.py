@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -46,18 +45,26 @@ class ResultAggregator:
                     summary = rehydrator.load_summary()
                     summary_info = summary.get("summary_info", {})
 
-                    topo = meta.get("topology") if meta.get("topology") is not None else meta.get("sharing_mode")
-                    records.append({
-                        "run_id": meta.get("run_id"),
-                        "experiment_id": meta.get("experiment_id"),
-                        "policy": meta.get("memory_policy"),
-                        "topology": topo,
-                        "poisoning_mode": meta.get("poisoning_mode"),
-                        "seed": meta.get("seed"),
-                        "final_score": summary.get("final_score", 0.0),
-                        "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
-                        "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
-                    })
+                    topo = (
+                        meta.get("topology")
+                        if meta.get("topology") is not None
+                        else meta.get("sharing_mode")
+                    )
+                    records.append(
+                        {
+                            "run_id": meta.get("run_id"),
+                            "experiment_id": meta.get("experiment_id"),
+                            "policy": meta.get("memory_policy"),
+                            "topology": topo,
+                            "poisoning_mode": meta.get("poisoning_mode"),
+                            "seed": meta.get("seed"),
+                            "final_score": summary.get("final_score", 0.0),
+                            "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
+                            "peer_contamination_rate": summary_info.get(
+                                "peer_contamination_rate", 0.0
+                            ),
+                        }
+                    )
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("Failed to rehydrate %s: %s", run_dir, exc)
 
@@ -72,7 +79,9 @@ class ResultAggregator:
         if self.df.empty:
             return pd.DataFrame()
 
-        group_cols = [col for col in ["policy", "topology", "poisoning_mode"] if col in self.df.columns]
+        group_cols = [
+            col for col in ["policy", "topology", "poisoning_mode"] if col in self.df.columns
+        ]
         if not group_cols:
             return pd.DataFrame()
 
@@ -91,7 +100,11 @@ class ResultAggregator:
             std_col = f"{m}_std"
             count_col = f"{m}_count"
             mean_col = f"{m}_mean"
-            if std_col in grouped.columns and count_col in grouped.columns and mean_col in grouped.columns:
+            if (
+                std_col in grouped.columns
+                and count_col in grouped.columns
+                and mean_col in grouped.columns
+            ):
                 counts = np.maximum(1, grouped[count_col].astype(float))
                 std = grouped[std_col].astype(float)
                 mean = grouped[mean_col].astype(float)
@@ -147,6 +160,8 @@ class ResultAggregator:
 
             cont_str = f"{cont_m:.2%} [{cont_lo:.2%}, {cont_hi:.2%}]"
 
-            lines.append(f"| {pol} | {top} | {poi} | {score_str} | {bleu_str} | {cont_str} | {n_runs} |")
+            lines.append(
+                f"| {pol} | {top} | {poi} | {score_str} | {bleu_str} | {cont_str} | {n_runs} |"
+            )
 
         return "\n".join(lines)

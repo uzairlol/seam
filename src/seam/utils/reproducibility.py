@@ -24,7 +24,6 @@ def set_seed(seed: int) -> None:
     logger.debug("Set global seed: %d", seed)
 
 
-
 def get_git_commit_hash() -> Optional[str]:
     """Return the current git commit hash (short form), or None if unavailable.
 

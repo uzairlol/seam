@@ -18,7 +18,6 @@ from seam.memory.base_memory import BaseMemoryPolicy
 from seam.memory.factory import create_memory_policy
 from seam.metrics.collapse import (
     compute_action_entropy,
-    compute_embedding_similarity,
     compute_memory_length,
     compute_self_bleu,
 )
@@ -154,7 +153,9 @@ class EpisodeRunner:
         per_agent_rewards: dict[str, list[float]] = {aid: [] for aid in self.population.agent_ids}
         # Store local memory only (before shared context is prepended) for Self-BLEU
         # to measure intra-agent temporal collapse, not cross-agent convergence via sharing
-        per_agent_local_memories: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
+        per_agent_local_memories: dict[str, list[str]] = {
+            aid: [] for aid in self.population.agent_ids
+        }
         # Store combined memory for logging/debugging
         per_agent_memories: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
 
@@ -178,7 +179,9 @@ class EpisodeRunner:
                 local_contexts[aid] = local_ctx
                 shared_ctx = self.sharing_engine.get_shared_context(aid)
                 if shared_ctx:
-                    memory_contexts[aid] = f"{local_ctx}\n\n{shared_ctx}" if local_ctx else shared_ctx
+                    memory_contexts[aid] = (
+                        f"{local_ctx}\n\n{shared_ctx}" if local_ctx else shared_ctx
+                    )
                 else:
                     memory_contexts[aid] = local_ctx
 
@@ -252,18 +255,30 @@ class EpisodeRunner:
         quoted_phrases = re.findall(r"['\"]([^'\"]+)['\"]", poison_payload)
         extracted_keywords = [phrase.strip() for phrase in quoted_phrases if phrase.strip()]
         if not extracted_keywords:
-            extracted_keywords = [piece.strip() for piece in re.findall(r"\b\d+\s+\d+\b|\b\d+\b|\b[A-Za-z]+\b", poison_payload) if piece.strip()]
+            extracted_keywords = [
+                piece.strip()
+                for piece in re.findall(r"\b\d+\s+\d+\b|\b\d+\b|\b[A-Za-z]+\b", poison_payload)
+                if piece.strip()
+            ]
         poison_keywords = sorted({kw.lower() for kw in extracted_keywords if kw.strip()})
-        peer_contamination_rate = compute_contamination_rate(
-            per_agent_memories=per_agent_memories,
-            poison_keywords=poison_keywords,
-            seed_agent_id=self.config.poisoning.poison_agent_id,
-        ) if self.poison_injector.is_active and self.sharing_engine.is_active else 0.0
+        peer_contamination_rate = (
+            compute_contamination_rate(
+                per_agent_memories=per_agent_memories,
+                poison_keywords=poison_keywords,
+                seed_agent_id=self.config.poisoning.poison_agent_id,
+            )
+            if self.poison_injector.is_active and self.sharing_engine.is_active
+            else 0.0
+        )
 
-        per_agent_poison_adherence = {
-            aid: compute_poison_adherence(acts, target_pattern=poison_payload)
-            for aid, acts in per_agent_actions.items()
-        } if self.poison_injector.is_active else {aid: 0.0 for aid in self.population.agent_ids}
+        per_agent_poison_adherence = (
+            {
+                aid: compute_poison_adherence(acts, target_pattern=poison_payload)
+                for aid, acts in per_agent_actions.items()
+            }
+            if self.poison_injector.is_active
+            else {aid: 0.0 for aid in self.population.agent_ids}
+        )
 
         summary = {
             "run_id": self.logger_inst.run_id,

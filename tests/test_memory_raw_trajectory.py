@@ -11,11 +11,13 @@ def test_raw_trajectory_buffer_sliding_window() -> None:
     assert policy.get_context() == ""
 
     for i in range(5):
-        policy.update({
-            "observation": {"step": i},
-            "action": f"move_{i}",
-            "reward": float(i),
-        })
+        policy.update(
+            {
+                "observation": {"step": i},
+                "action": f"move_{i}",
+                "reward": float(i),
+            }
+        )
 
     ctx = policy.get_context()
     assert "Step 1: Obs={'step': 2}" in ctx

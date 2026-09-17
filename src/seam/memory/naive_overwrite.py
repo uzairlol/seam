@@ -85,12 +85,18 @@ class NaiveOverwritePolicy(BaseMemoryPolicy):
                 self._memory_text = self._truncate_to_limit(new_mem.strip())
             except Exception as exc:  # noqa: BLE001
                 logger.warning("LLM call failed during naive overwrite reflection: %s", exc)
-                self._memory_text = self._truncate_to_limit(f"Last Action: {action} | Reward: {reward}")
+                self._memory_text = self._truncate_to_limit(
+                    f"Last Action: {action} | Reward: {reward}"
+                )
         else:
             # Deterministic fallback when no LLM client is provided
             base_mem = f"Last Action: {action} | Reward: {reward}"
             if shared_context.strip():
-                peer_lines = [l.strip() for l in shared_context.splitlines() if l.strip() and not l.strip().startswith("===")]
+                peer_lines = [
+                    line.strip()
+                    for line in shared_context.splitlines()
+                    if line.strip() and not line.strip().startswith("===")
+                ]
                 if peer_lines:
                     base_mem += " | Peer Memory: " + "; ".join(peer_lines)
             self._memory_text = self._truncate_to_limit(base_mem)

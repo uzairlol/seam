@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from typing import Any
 
 from seam.agents.decoding import OllamaClient
 
@@ -82,8 +81,7 @@ def compute_self_bleu(memory_sequence: list[str], max_n: int = 2) -> float:
                     ref_max_counts[ngram] = max(ref_max_counts.get(ngram, 0), count)
 
             clipped_matches = sum(
-                min(count, ref_max_counts.get(ngram, 0))
-                for ngram, count in cand_ngrams.items()
+                min(count, ref_max_counts.get(ngram, 0)) for ngram, count in cand_ngrams.items()
             )
             total_cand = sum(cand_ngrams.values())
             precision = clipped_matches / total_cand if total_cand > 0 else 0.0

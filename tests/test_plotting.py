@@ -28,24 +28,26 @@ def _load_generate_figures():
 
 
 def test_plotting_routines():
-    df_sample = pd.DataFrame([
-        {
-            "policy": "naive_overwrite",
-            "topology": "full_broadcast",
-            "poisoning_mode": "clean",
-            "final_score": 0.85,
-            "mean_self_bleu": 0.20,
-            "peer_contamination_rate": 0.0,
-        },
-        {
-            "policy": "structured_incremental",
-            "topology": "ring",
-            "poisoning_mode": "internal",
-            "final_score": 0.45,
-            "mean_self_bleu": 0.65,
-            "peer_contamination_rate": 0.75,
-        },
-    ])
+    df_sample = pd.DataFrame(
+        [
+            {
+                "policy": "naive_overwrite",
+                "topology": "full_broadcast",
+                "poisoning_mode": "clean",
+                "final_score": 0.85,
+                "mean_self_bleu": 0.20,
+                "peer_contamination_rate": 0.0,
+            },
+            {
+                "policy": "structured_incremental",
+                "topology": "ring",
+                "poisoning_mode": "internal",
+                "final_score": 0.45,
+                "mean_self_bleu": 0.65,
+                "peer_contamination_rate": 0.75,
+            },
+        ]
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -77,28 +79,30 @@ def test_new_plotting_routines_handle_missing_columns() -> None:
 
 
 def test_generate_figures_exports_summary_statistics():
-    df_sample = pd.DataFrame([
-        {
-            "run_id": "r1",
-            "policy": "naive_overwrite",
-            "topology": "ring",
-            "poisoning_mode": "clean",
-            "seed": 42,
-            "final_score": 0.85,
-            "mean_self_bleu": 0.20,
-            "peer_contamination_rate": 0.0,
-        },
-        {
-            "run_id": "r2",
-            "policy": "naive_overwrite",
-            "topology": "ring",
-            "poisoning_mode": "clean",
-            "seed": 43,
-            "final_score": 0.75,
-            "mean_self_bleu": 0.30,
-            "peer_contamination_rate": 0.1,
-        },
-    ])
+    df_sample = pd.DataFrame(
+        [
+            {
+                "run_id": "r1",
+                "policy": "naive_overwrite",
+                "topology": "ring",
+                "poisoning_mode": "clean",
+                "seed": 42,
+                "final_score": 0.85,
+                "mean_self_bleu": 0.20,
+                "peer_contamination_rate": 0.0,
+            },
+            {
+                "run_id": "r2",
+                "policy": "naive_overwrite",
+                "topology": "ring",
+                "poisoning_mode": "clean",
+                "seed": 43,
+                "final_score": 0.75,
+                "mean_self_bleu": 0.30,
+                "peer_contamination_rate": 0.1,
+            },
+        ]
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
