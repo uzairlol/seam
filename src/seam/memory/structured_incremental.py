@@ -114,11 +114,13 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
         clean_rule = rule_text.strip()
         if not clean_rule:
             return
-        self._playbook.append({
-            "id": self._next_id,
-            "rule": clean_rule,
-            "status": "active",
-        })
+        self._playbook.append(
+            {
+                "id": self._next_id,
+                "rule": clean_rule,
+                "status": "active",
+            }
+        )
         self._next_id += 1
 
     def _deprecate_rule(self, rule_id: int) -> None:

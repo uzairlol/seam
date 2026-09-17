@@ -118,7 +118,9 @@ class RunLogger:
 
         return event
 
-    def log_episode_end(self, final_score: float, summary_info: dict[str, Any] | None = None) -> None:
+    def log_episode_end(
+        self, final_score: float, summary_info: dict[str, Any] | None = None
+    ) -> None:
         """Record final summary metadata at episode completion.
 
         Args:

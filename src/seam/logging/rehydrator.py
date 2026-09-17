@@ -35,6 +35,7 @@ class RunRehydrator:
         if not self.metadata_file.exists():
             raise FileNotFoundError(f"Metadata file missing in {self.run_dir}")
         import json
+
         return json.loads(self.metadata_file.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
     def load_config(self) -> dict[str, Any]:
@@ -54,6 +55,7 @@ class RunRehydrator:
         if not self.summary_file.exists():
             return {}
         import json
+
         return json.loads(self.summary_file.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
     def to_dataframe(self) -> pd.DataFrame:

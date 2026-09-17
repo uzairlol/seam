@@ -35,6 +35,9 @@ data/processed/*
 figures/*.png
 figures/*.svg
 figures/*.pdf
+figures/**/*.png
+figures/**/*.svg
+figures/**/*.pdf
 !figures/.gitkeep
 
 # Reports: keep .md write-ups, ignore generated CSVs/Excel

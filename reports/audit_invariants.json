@@ -1,0 +1,93 @@
+{
+  "status": "PASSED",
+  "violations": [],
+  "completeness": {
+    "bargaining_game": {
+      "total_runs": 180,
+      "unique_seeds": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "policies": [
+        "naive_overwrite",
+        "raw_trajectory_buffer",
+        "structured_incremental"
+      ],
+      "topologies": [
+        "full_broadcast",
+        "off",
+        "ring"
+      ],
+      "poisoning_modes": [
+        "clean",
+        "internal"
+      ]
+    },
+    "number_guessing": {
+      "total_runs": 180,
+      "unique_seeds": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "policies": [
+        "naive_overwrite",
+        "raw_trajectory_buffer",
+        "structured_incremental"
+      ],
+      "topologies": [
+        "full_broadcast",
+        "off",
+        "ring"
+      ],
+      "poisoning_modes": [
+        "clean",
+        "internal"
+      ]
+    },
+    "resource_foraging": {
+      "total_runs": 180,
+      "unique_seeds": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "policies": [
+        "naive_overwrite",
+        "raw_trajectory_buffer",
+        "structured_incremental"
+      ],
+      "topologies": [
+        "full_broadcast",
+        "off",
+        "ring"
+      ],
+      "poisoning_modes": [
+        "clean",
+        "internal"
+      ]
+    }
+  }
+}

@@ -65,7 +65,9 @@ def generate_figures(input_dir: str = "runs/experiments", figures_dir: str = "fi
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate SEAM Plots and Summary Tables")
-    parser.add_argument("--indir", type=str, default="runs/experiments", help="Input experiment runs directory")
+    parser.add_argument(
+        "--indir", type=str, default="runs/experiments", help="Input experiment runs directory"
+    )
     parser.add_argument("--outdir", type=str, default="figures", help="Output figures directory")
     args = parser.parse_args()
 

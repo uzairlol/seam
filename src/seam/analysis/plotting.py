@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -15,14 +16,16 @@ logger = logging.getLogger(__name__)
 
 # Set style globally
 sns.set_theme(style="whitegrid", palette="muted")
-plt.rcParams.update({
-    "font.size": 11,
-    "axes.labelsize": 12,
-    "axes.titlesize": 13,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "figure.titlesize": 14,
-})
+plt.rcParams.update(
+    {
+        "font.size": 11,
+        "axes.labelsize": 12,
+        "axes.titlesize": 13,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "figure.titlesize": 14,
+    }
+)
 
 _METRICS = ("final_score", "mean_self_bleu", "peer_contamination_rate")
 
@@ -44,7 +47,9 @@ def _usable_data(
     return result.dropna(subset=required + numeric)
 
 
-def _start_figure(output_file: str | Path, figsize: tuple[float, float]) -> tuple[Path, plt.Figure, plt.Axes]:
+def _start_figure(
+    output_file: str | Path, figsize: tuple[float, float]
+) -> tuple[Path, plt.Figure, plt.Axes]:
     out_path = Path(output_file)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=figsize)
@@ -65,7 +70,9 @@ def _show_no_data(ax: plt.Axes, title: str) -> None:
     ax.set_axis_off()
 
 
-def plot_performance_comparison(df: pd.DataFrame, output_file: str | Path = "figures/performance_comparison.png") -> Path:
+def plot_performance_comparison(
+    df: pd.DataFrame, output_file: str | Path = "figures/performance_comparison.png"
+) -> Path:
     """Generate bar chart comparing ground truth task scores across conditions.
 
     Args:
@@ -103,7 +110,9 @@ def plot_performance_comparison(df: pd.DataFrame, output_file: str | Path = "fig
     return out_path
 
 
-def plot_memory_collapse(df: pd.DataFrame, output_file: str | Path = "figures/memory_collapse.png") -> Path:
+def plot_memory_collapse(
+    df: pd.DataFrame, output_file: str | Path = "figures/memory_collapse.png"
+) -> Path:
     """Generate bar chart comparing Self-BLEU memory collapse metrics across conditions.
 
     Args:
@@ -141,7 +150,9 @@ def plot_memory_collapse(df: pd.DataFrame, output_file: str | Path = "figures/me
     return out_path
 
 
-def plot_contamination_propagation(df: pd.DataFrame, output_file: str | Path = "figures/contamination_propagation.png") -> Path:
+def plot_contamination_propagation(
+    df: pd.DataFrame, output_file: str | Path = "figures/contamination_propagation.png"
+) -> Path:
     """Generate bar chart showing peer contamination rate across topologies under memory poisoning.
 
     Args:
@@ -186,7 +197,11 @@ def plot_metric_condition_heatmap(
     """Plot condition means as a policy-by-topology heatmap."""
     out_path, fig, ax = _start_figure(output_file, (8, 5))
     title = f"{metric.replace('_', ' ').title()} by Memory Policy and Topology"
-    data = _usable_data(df, ["policy", "topology", metric], [metric]) if metric in _METRICS else pd.DataFrame()
+    data = (
+        _usable_data(df, ["policy", "topology", metric], [metric])
+        if metric in _METRICS
+        else pd.DataFrame()
+    )
     if data.empty:
         _show_no_data(ax, title)
     else:
@@ -274,7 +289,9 @@ def plot_run_level_distributions(
     out_path = Path(output_file)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     metrics = [metric for metric in _METRICS if metric in df.columns]
-    fig, axes = plt.subplots(1, max(1, len(metrics)), figsize=(5 * max(1, len(metrics)), 5), squeeze=False)
+    fig, axes = plt.subplots(
+        1, max(1, len(metrics)), figsize=(5 * max(1, len(metrics)), 5), squeeze=False
+    )
     axes = axes[0]
     if not metrics or "policy" not in df.columns:
         _show_no_data(axes[0], "Run-Level Metric Distributions")
@@ -285,7 +302,9 @@ def plot_run_level_distributions(
                 _show_no_data(ax, metric.replace("_", " ").title())
                 continue
             sns.boxplot(data=data, x="policy", y=metric, color="#9ecae1", ax=ax)
-            sns.stripplot(data=data, x="policy", y=metric, color="black", alpha=0.55, jitter=0.12, ax=ax)
+            sns.stripplot(
+                data=data, x="policy", y=metric, color="black", alpha=0.55, jitter=0.12, ax=ax
+            )
             ax.set_title(metric.replace("_", " ").title())
             ax.set_xlabel("Memory Policy")
             ax.set_ylabel("Value")

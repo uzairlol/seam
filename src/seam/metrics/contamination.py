@@ -73,9 +73,7 @@ def compute_contamination_rate(
     for aid in peer_ids:
         mem_states = per_agent_memories[aid]
         # Check if any memory state across rounds contained poison phrases
-        is_contaminated = any(
-            detect_poison_phrases(mem, poison_keywords) for mem in mem_states
-        )
+        is_contaminated = any(detect_poison_phrases(mem, poison_keywords) for mem in mem_states)
         if is_contaminated:
             contaminated_peers += 1
 

@@ -84,22 +84,26 @@ class BaseAgent:
         ]
 
         if memory_context.strip():
-            lines.extend([
-                "",
-                "=== Memory & Strategies ===",
-                memory_context.strip(),
-            ])
+            lines.extend(
+                [
+                    "",
+                    "=== Memory & Strategies ===",
+                    memory_context.strip(),
+                ]
+            )
 
-        lines.extend([
-            "",
-            "=== Current Observation ===",
-            str(observation),
-            "",
-            "=== Available Actions ===",
-            ", ".join(action_space[:10]) + ("..." if len(action_space) > 10 else ""),
-            "",
-            "=== Instruction ===",
-        ])
+        lines.extend(
+            [
+                "",
+                "=== Current Observation ===",
+                str(observation),
+                "",
+                "=== Available Actions ===",
+                ", ".join(action_space[:10]) + ("..." if len(action_space) > 10 else ""),
+                "",
+                "=== Instruction ===",
+            ]
+        )
 
         # Build a role-specific instruction when the environment signals a role.
         role = observation.get("role") if isinstance(observation, dict) else None
@@ -109,13 +113,13 @@ class BaseAgent:
             lines.append(
                 f"You are the PROPOSER this round. You must propose how to split {pie} units "
                 f"between yourself and the other agent. "
-                f"Respond with ONLY two integers separated by a space, e.g. \"{half} {pie - half}\". "
+                f'Respond with ONLY two integers separated by a space, e.g. "{half} {pie - half}". '
                 f"Do NOT write 'accept', 'reject', or any other word."
             )
         elif role == "responder":
             lines.append(
                 "You are the RESPONDER this round. You must decide whether to accept or reject "
-                "the proposer's offer. Respond with ONLY the word \"accept\" or \"reject\"."
+                'the proposer\'s offer. Respond with ONLY the word "accept" or "reject".'
             )
         else:
             lines.append(
@@ -200,5 +204,10 @@ class BaseAgent:
             raw_response, _latency = self.client.complete(prompt)
             return self.extract_action(raw_response, action_space, default_action=fallback)
         except Exception as exc:  # noqa: BLE001
-            logger.error("[%s] Error during LLM completion: %s — falling back to '%s'", self.agent_id, exc, fallback)
+            logger.error(
+                "[%s] Error during LLM completion: %s — falling back to '%s'",
+                self.agent_id,
+                exc,
+                fallback,
+            )
             return fallback

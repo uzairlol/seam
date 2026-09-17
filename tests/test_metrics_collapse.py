@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 
 from seam.metrics.collapse import (
     compute_action_entropy,
@@ -62,7 +61,7 @@ def test_compute_embedding_similarity_fallback() -> None:
     sims = compute_embedding_similarity(memories, client=None)
     assert len(sims) == 2
     assert sims[0] == 1.0  # Identical token overlap
-    assert sims[1] < 1.0   # Different token overlap
+    assert sims[1] < 1.0  # Different token overlap
 
 
 def test_compute_action_entropy() -> None:

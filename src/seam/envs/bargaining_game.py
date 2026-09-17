@@ -92,8 +92,11 @@ class BargainingGame(BaseEnv):
         return {
             aid: self._build_obs(
                 aid,
-                role="proposer" if aid == self._next_proposer else
-                     "responder" if aid == self._next_responder else "observer",
+                role="proposer"
+                if aid == self._next_proposer
+                else "responder"
+                if aid == self._next_responder
+                else "observer",
             )
             for aid in agent_ids
         }
@@ -154,12 +157,20 @@ class BargainingGame(BaseEnv):
             self._accepted_deals.append((own_share, other_share))
             logger.debug(
                 "Round %d: %s proposed %d/%d — accepted by %s",
-                self._round, proposer_id, own_share, other_share, responder_id,
+                self._round,
+                proposer_id,
+                own_share,
+                other_share,
+                responder_id,
             )
         else:
             logger.debug(
                 "Round %d: %s proposed %d/%d — rejected by %s",
-                self._round, proposer_id, own_share, other_share, responder_id,
+                self._round,
+                proposer_id,
+                own_share,
+                other_share,
+                responder_id,
             )
 
         if self._round >= self._episode_length:
@@ -172,15 +183,15 @@ class BargainingGame(BaseEnv):
             # Pre-select roles for the NEXT round so observations are forward-looking.
             self._next_proposer, self._next_responder = self._sample_pair(agent_ids)
             next_role_map = {
-                aid: "proposer" if aid == self._next_proposer else
-                     "responder" if aid == self._next_responder else "observer"
+                aid: "proposer"
+                if aid == self._next_proposer
+                else "responder"
+                if aid == self._next_responder
+                else "observer"
                 for aid in agent_ids
             }
 
-        observations = {
-            aid: self._build_obs(aid, role=next_role_map[aid])
-            for aid in agent_ids
-        }
+        observations = {aid: self._build_obs(aid, role=next_role_map[aid]) for aid in agent_ids}
         info: dict[str, Any] = {
             "round": self._round,
             "deal": deal_info,
@@ -192,7 +203,6 @@ class BargainingGame(BaseEnv):
             "done": self._done,
             "info": info,
         }
-
 
     def get_fairness_score(self) -> float:
         """Return a fairness score: ``1 / (1 + mean_deviation_from_50)``.

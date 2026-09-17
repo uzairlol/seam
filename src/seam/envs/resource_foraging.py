@@ -103,9 +103,7 @@ class ResourceForagingGame(BaseEnv):
         )
         for idx in flat_indices:
             r, c = divmod(int(idx), self._grid_size)
-            self._grid[r, c] = min(
-                self._grid[r, c] + 1, self._max_resources_per_cell
-            )
+            self._grid[r, c] = min(self._grid[r, c] + 1, self._max_resources_per_cell)
         self._total_spawned += int(self._grid.sum())
 
         # Place agents at random distinct starting positions
@@ -248,16 +246,20 @@ class ResourceForagingGame(BaseEnv):
         """
         lines: list[str] = [f"=== Round {self._round}/{self._episode_length} ==="]
         # Build overlay: cell content + agent markers
-        display = [["." if self._grid[r, c] == 0 else str(self._grid[r, c])
-                    for c in range(self._grid_size)]
-                   for r in range(self._grid_size)]
+        display = [
+            [
+                "." if self._grid[r, c] == 0 else str(self._grid[r, c])
+                for c in range(self._grid_size)
+            ]
+            for r in range(self._grid_size)
+        ]
         for aid, (r, c) in self._positions.items():
             display[r][c] = "A"  # agent marker overrides resource display
         for row in display:
             lines.append(" ".join(row))
-        lines.append("Scores: " + ", ".join(
-            f"{aid}={score}" for aid, score in self._scores.items()
-        ))
+        lines.append(
+            "Scores: " + ", ".join(f"{aid}={score}" for aid, score in self._scores.items())
+        )
         return "\n".join(lines)
 
     # ------------------------------------------------------------------

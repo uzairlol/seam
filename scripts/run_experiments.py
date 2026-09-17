@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import gc
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -59,13 +58,15 @@ def generate_experiment_grid(
 
             for poisoning in poisoning_modes:
                 for seed in seeds:
-                    grid.append({
-                        "policy": policy,
-                        "sharing_mode": mode_str,
-                        "topology": topology,
-                        "poisoning_mode": poisoning,
-                        "seed": seed,
-                    })
+                    grid.append(
+                        {
+                            "policy": policy,
+                            "sharing_mode": mode_str,
+                            "topology": topology,
+                            "poisoning_mode": poisoning,
+                            "seed": seed,
+                        }
+                    )
     return grid
 
 
@@ -94,7 +95,11 @@ def run_experiments(
     Returns:
         List of summary result dictionaries.
     """
-    target_policies = policies or ["naive_overwrite", "raw_trajectory_buffer", "structured_incremental"]
+    target_policies = policies or [
+        "naive_overwrite",
+        "raw_trajectory_buffer",
+        "structured_incremental",
+    ]
     target_sharing = sharing_modes or ["off", "full_broadcast", "ring"]
     target_poisoning = poisoning_modes or ["clean", "internal"]
     target_seeds = seeds or [42, 43, 44]
@@ -172,18 +177,20 @@ def _save_summary_manifest(results: list[dict[str, Any]], out_dir: Path) -> None
 
     rows = []
     for r in results:
-        rows.append({
-            "run_id": r.get("run_id"),
-            "experiment_id": r.get("experiment_id"),
-            "policy": r.get("policy"),
-            "topology": r.get("topology"),
-            "poisoning_mode": r.get("poisoning_mode"),
-            "seed": r.get("seed"),
-            "rounds_played": r.get("rounds_played"),
-            "final_score": r.get("final_score"),
-            "mean_self_bleu": r.get("mean_self_bleu"),
-            "peer_contamination_rate": r.get("peer_contamination_rate", 0.0),
-        })
+        rows.append(
+            {
+                "run_id": r.get("run_id"),
+                "experiment_id": r.get("experiment_id"),
+                "policy": r.get("policy"),
+                "topology": r.get("topology"),
+                "poisoning_mode": r.get("poisoning_mode"),
+                "seed": r.get("seed"),
+                "rounds_played": r.get("rounds_played"),
+                "final_score": r.get("final_score"),
+                "mean_self_bleu": r.get("mean_self_bleu"),
+                "peer_contamination_rate": r.get("peer_contamination_rate", 0.0),
+            }
+        )
 
     df = pd.DataFrame(rows)
     csv_path = out_dir / "results_summary.csv"
@@ -196,12 +203,28 @@ def _save_summary_manifest(results: list[dict[str, Any]], out_dir: Path) -> None
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run SEAM Phase 8 Multi-Agent Factorial Experiments")
+    parser = argparse.ArgumentParser(
+        description="Run SEAM Phase 8 Multi-Agent Factorial Experiments"
+    )
     parser.add_argument("--env", type=str, default="resource_foraging", help="Environment type")
     parser.add_argument("--model", type=str, default="qwen2.5:7b", help="Ollama model tag")
-    parser.add_argument("--policies", type=str, nargs="+", default=["naive_overwrite", "raw_trajectory_buffer", "structured_incremental"], help="Memory policies")
-    parser.add_argument("--sharing", type=str, nargs="+", default=["off", "full_broadcast", "ring"], help="Sharing topologies")
-    parser.add_argument("--poisoning", type=str, nargs="+", default=["clean", "internal"], help="Poisoning modes")
+    parser.add_argument(
+        "--policies",
+        type=str,
+        nargs="+",
+        default=["naive_overwrite", "raw_trajectory_buffer", "structured_incremental"],
+        help="Memory policies",
+    )
+    parser.add_argument(
+        "--sharing",
+        type=str,
+        nargs="+",
+        default=["off", "full_broadcast", "ring"],
+        help="Sharing topologies",
+    )
+    parser.add_argument(
+        "--poisoning", type=str, nargs="+", default=["clean", "internal"], help="Poisoning modes"
+    )
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44], help="Random seeds")
     parser.add_argument("--outdir", type=str, default="runs/experiments", help="Output directory")
     args = parser.parse_args()

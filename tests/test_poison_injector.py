@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from seam.memory.naive_overwrite import NaiveOverwritePolicy
 from seam.orchestration.config_loader import MemoryConfig, PoisoningConfig, SharingConfig
-from seam.poisoning.injector import DEFAULT_POISON_PAYLOADS, PoisonInjector
+from seam.poisoning.injector import PoisonInjector
 from seam.sharing.engine import MemorySharingEngine
 
 

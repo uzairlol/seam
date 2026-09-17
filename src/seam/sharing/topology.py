@@ -20,7 +20,9 @@ class TopologyGenerator:
         seed: Random seed for stochastic topologies (e.g. cluster/random).
     """
 
-    def __init__(self, n_agents: int, topology_type: str = "full_broadcast", seed: int | None = None) -> None:
+    def __init__(
+        self, n_agents: int, topology_type: str = "full_broadcast", seed: int | None = None
+    ) -> None:
         self.n_agents = n_agents
         self.topology_type = topology_type.lower().strip()
         self.seed = seed

@@ -25,7 +25,9 @@ def model_config() -> ModelConfig:
 
 
 @patch("ollama.Client")
-def test_ollama_client_complete_success(mock_ollama_cls: MagicMock, model_config: ModelConfig) -> None:
+def test_ollama_client_complete_success(
+    mock_ollama_cls: MagicMock, model_config: ModelConfig
+) -> None:
     """Test successful text completion using OllamaClient."""
     mock_instance = MagicMock()
     mock_response = MagicMock()
@@ -85,7 +87,9 @@ def test_ollama_client_is_available(mock_ollama_cls: MagicMock, model_config: Mo
 
 
 @patch("ollama.Client")
-def test_ollama_client_get_model_info(mock_ollama_cls: MagicMock, model_config: ModelConfig) -> None:
+def test_ollama_client_get_model_info(
+    mock_ollama_cls: MagicMock, model_config: ModelConfig
+) -> None:
     """Test get_model_info returns metadata dict."""
     mock_instance = MagicMock()
     mock_instance.show.return_value = {"details": {"format": "gguf"}}

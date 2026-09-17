@@ -11,8 +11,7 @@ def test_structured_incremental_llm_reflection() -> None:
     """Test ADD and DEPRECATE instructions parsing from mock LLM response."""
     mock_client = MagicMock()
     mock_client.complete.return_value = (
-        "ADD: Always check adjacent cells before harvesting.\n"
-        "DEPRECATE: Rule #1",
+        "ADD: Always check adjacent cells before harvesting.\nDEPRECATE: Rule #1",
         40,
     )
 

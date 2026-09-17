@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from seam.metrics.contamination import (
     compute_contamination_rate,
     compute_poison_adherence,
@@ -13,9 +14,6 @@ def test_compute_poison_adherence():
     actions = ["100", "50", "100", "100", "20"]
     rate = compute_poison_adherence(actions, target_pattern="100")
     assert pytest.approx(rate) == 0.6  # 3 out of 5 match
-
-
-import pytest
 
 
 def test_detect_poison_phrases():

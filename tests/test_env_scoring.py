@@ -6,12 +6,15 @@ import random
 
 import pytest
 
+from seam.envs.bargaining_game import BargainingGame
+from seam.envs.number_guessing import NumberGuessingGame
 from seam.envs.resource_foraging import ResourceForagingGame
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def run_random_episode(seed: int, episode_length: int = 50) -> dict:
     """Run a full episode with uniformly random actions; return final result."""
@@ -29,6 +32,7 @@ def run_random_episode(seed: int, episode_length: int = 50) -> dict:
 # ---------------------------------------------------------------------------
 # Test 1 — Determinism: same seed → identical episode
 # ---------------------------------------------------------------------------
+
 
 def test_same_seed_same_episode() -> None:
     """Two runs with the same seed must produce identical reward sequences."""
@@ -55,8 +59,10 @@ def test_same_seed_same_episode() -> None:
 # Test 2 — Different seeds produce different episodes
 # ---------------------------------------------------------------------------
 
+
 def test_different_seeds_different_episodes() -> None:
     """Sanity check: different seeds should (almost certainly) differ."""
+
     def collect_rewards(seed: int) -> list[dict[str, float]]:
         env = ResourceForagingGame(episode_length=10)
         rng = random.Random(seed)
@@ -75,6 +81,7 @@ def test_different_seeds_different_episodes() -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — Collision gives 0 reward
 # ---------------------------------------------------------------------------
+
 
 def test_collision_gives_zero_reward() -> None:
     """Two agents on the same cell both get 0 reward, even if they harvest."""
@@ -96,6 +103,7 @@ def test_collision_gives_zero_reward() -> None:
 # Test 4 — Harvest on empty cell gives 0 reward
 # ---------------------------------------------------------------------------
 
+
 def test_harvest_empty_cell_gives_zero_reward() -> None:
     """Harvesting a cell with 0 resources yields 0 reward."""
     env = ResourceForagingGame(n_agents=2, grid_size=5, episode_length=5)
@@ -114,6 +122,7 @@ def test_harvest_empty_cell_gives_zero_reward() -> None:
 # Test 5 — get_ground_truth_score() is in [0.0, 1.0]
 # ---------------------------------------------------------------------------
 
+
 def test_ground_truth_score_in_range() -> None:
     """After any episode, get_ground_truth_score() must be in [0.0, 1.0]."""
     env = ResourceForagingGame(episode_length=50)
@@ -131,6 +140,7 @@ def test_ground_truth_score_in_range() -> None:
 # ---------------------------------------------------------------------------
 # Test 6 — Episode terminates after episode_length rounds
 # ---------------------------------------------------------------------------
+
 
 def test_episode_terminates_after_episode_length() -> None:
     """The 'done' flag must be True exactly when episode_length rounds pass."""
@@ -158,6 +168,7 @@ def test_episode_terminates_after_episode_length() -> None:
 # Test 7 — step() raises after episode is done
 # ---------------------------------------------------------------------------
 
+
 def test_step_after_done_raises() -> None:
     """Calling step() after the episode finishes should raise RuntimeError."""
     env = ResourceForagingGame(episode_length=3)
@@ -174,6 +185,7 @@ def test_step_after_done_raises() -> None:
 # ---------------------------------------------------------------------------
 # Test 8 — Successful single-agent harvest gives reward 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_successful_harvest_gives_reward_one() -> None:
     """A lone agent harvesting a cell with resources gets reward 1.0."""
@@ -193,9 +205,6 @@ def test_successful_harvest_gives_reward_one() -> None:
 # ---------------------------------------------------------------------------
 # BargainingGame tests
 # ---------------------------------------------------------------------------
-
-from seam.envs.bargaining_game import BargainingGame
-from seam.envs.number_guessing import NumberGuessingGame
 
 
 def test_bargaining_game_mechanics_and_scoring() -> None:
@@ -248,10 +257,11 @@ def test_bargaining_game_no_accepted_deals_score_zero() -> None:
 # NumberGuessingGame tests
 # ---------------------------------------------------------------------------
 
+
 def test_number_guessing_game_mechanics() -> None:
     """Test NumberGuessingGame feedback, solver reward, and ground truth score."""
     env = NumberGuessingGame(n_agents=2, episode_length=10, secret_min=1, secret_max=100)
-    obs = env.reset(seed=123)
+    env.reset(seed=123)
     secret = env._secret
 
     # Submit wrong guesses first
@@ -267,4 +277,3 @@ def test_number_guessing_game_mechanics() -> None:
 
     score = env.get_ground_truth_score()
     assert score == 0.5  # solved in 2 rounds -> 1/2 = 0.5
-

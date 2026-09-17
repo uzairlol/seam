@@ -22,7 +22,9 @@ def test_sharing_integration_with_runner():
         env=EnvConfig(type="number_guessing", n_agents=4, episode_length=4),
         model=ModelConfig(model_name="dummy_model", base_url="http://localhost:11434"),
         memory=MemoryConfig(policy="naive_overwrite"),
-        sharing=SharingConfig(mode="broadcast", topology="full_broadcast", publish_every_n_rounds=1),
+        sharing=SharingConfig(
+            mode="broadcast", topology="full_broadcast", publish_every_n_rounds=1
+        ),
         poisoning=PoisoningConfig(mode="clean"),
         seeds=[42],
     )
