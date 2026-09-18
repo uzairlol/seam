@@ -119,7 +119,10 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
             return
         # Prevent identical duplicate active rules
         for entry in self._playbook:
-            if entry.get("status") == "active" and entry.get("rule", "").strip().lower() == clean_rule.lower():
+            if (
+                entry.get("status") == "active"
+                and entry.get("rule", "").strip().lower() == clean_rule.lower()
+            ):
                 return
         self._playbook.append(
             {

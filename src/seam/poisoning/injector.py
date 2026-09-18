@@ -84,15 +84,13 @@ class PoisonInjector:
     def _is_channel_mode(self) -> bool:
         """Check if config specifies channel broadcast poisoning."""
         return (
-            self.config.mode == "channel"
-            or getattr(self.config, "injection_mode", "") == "channel"
+            self.config.mode == "channel" or getattr(self.config, "injection_mode", "") == "channel"
         ) and self.config.mode != "clean"
 
     def _is_gradual_mode(self) -> bool:
         """Check if config specifies gradual broadcast poisoning."""
         return (
-            self.config.mode == "gradual"
-            or getattr(self.config, "injection_mode", "") == "gradual"
+            self.config.mode == "gradual" or getattr(self.config, "injection_mode", "") == "gradual"
         ) and self.config.mode != "clean"
 
     def inject_initial_memory(self, memory_policies: dict[str, BaseMemoryPolicy]) -> bool:
@@ -119,12 +117,14 @@ class PoisonInjector:
                 policy._memory_text = self.poison_payload
             elif hasattr(policy, "_buffer"):
                 # RawTrajectoryBufferPolicy
-                policy._buffer.append({
-                    "observation": {"poison_seed": True},
-                    "action": self.poison_payload,
-                    "reward": 0.0,
-                    "shared_peer_context": "",
-                })
+                policy._buffer.append(
+                    {
+                        "observation": {"poison_seed": True},
+                        "action": self.poison_payload,
+                        "reward": 0.0,
+                        "shared_peer_context": "",
+                    }
+                )
             else:
                 experience = {
                     "observation": {"poison_seed": True},

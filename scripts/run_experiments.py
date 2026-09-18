@@ -224,9 +224,19 @@ def main() -> None:
         help="Sharing topologies",
     )
     parser.add_argument(
-        "--poisoning", type=str, nargs="+", default=["clean", "internal", "channel", "gradual"], help="Poisoning modes"
+        "--poisoning",
+        type=str,
+        nargs="+",
+        default=["clean", "internal", "channel", "gradual"],
+        help="Poisoning modes",
     )
-    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44, 45, 46, 47, 48, 49, 50, 51], help="Random seeds")
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+        help="Random seeds",
+    )
     parser.add_argument("--outdir", type=str, default="runs/experiments", help="Output directory")
     args = parser.parse_args()
 
