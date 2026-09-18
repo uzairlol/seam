@@ -155,7 +155,7 @@ def run_statistical_suite(df: pd.DataFrame) -> Tuple[List[HypothesisTestResult],
     df = normalize_dataframe(df)
     audit_results = audit_invariants(df)
 
-    test_specs = [
+    test_specs: list[dict[str, Any]] = [
         # Hyp 1: Structured Incremental vs Naive Overwrite on Reward (Clean, Ring)
         {
             "id": "H1_struct_vs_naive_score",
