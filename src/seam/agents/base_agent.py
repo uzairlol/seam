@@ -99,7 +99,9 @@ class BaseAgent:
                 str(observation),
                 "",
                 "=== Available Actions ===",
-                ", ".join(action_space[:10]) + ("..." if len(action_space) > 10 else ""),
+                f"Integers from {action_space[0]} to {action_space[-1]} ({len(action_space)} choices)"
+                if len(action_space) > 20 and all(a.isdigit() for a in action_space[:5])
+                else (", ".join(action_space[:20]) + ("..." if len(action_space) > 20 else "")),
                 "",
                 "=== Instruction ===",
             ]

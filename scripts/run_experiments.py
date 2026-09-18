@@ -137,7 +137,7 @@ def run_experiments(
         cfg = ExperimentConfig(
             experiment_id=exp_id,
             description=f"Phase 8 multi-agent experiment run for {exp_id}",
-            env=EnvConfig(type=env_type, n_agents=4, episode_length=20),
+            env=EnvConfig(type=env_type, n_agents=6, episode_length=50),
             model=ModelConfig(model_name=model_name, base_url="http://localhost:11434"),
             memory=MemoryConfig(policy=cond["policy"]),
             sharing=SharingConfig(
@@ -189,6 +189,7 @@ def _save_summary_manifest(results: list[dict[str, Any]], out_dir: Path) -> None
                 "final_score": r.get("final_score"),
                 "mean_self_bleu": r.get("mean_self_bleu"),
                 "peer_contamination_rate": r.get("peer_contamination_rate", 0.0),
+                "propagation_latency": r.get("propagation_latency"),
             }
         )
 
@@ -212,20 +213,20 @@ def main() -> None:
         "--policies",
         type=str,
         nargs="+",
-        default=["naive_overwrite", "raw_trajectory_buffer", "structured_incremental"],
+        default=["no_memory", "naive_overwrite", "raw_trajectory_buffer", "structured_incremental"],
         help="Memory policies",
     )
     parser.add_argument(
         "--sharing",
         type=str,
         nargs="+",
-        default=["off", "full_broadcast", "ring"],
+        default=["off", "full_broadcast", "ring", "star", "cluster"],
         help="Sharing topologies",
     )
     parser.add_argument(
-        "--poisoning", type=str, nargs="+", default=["clean", "internal"], help="Poisoning modes"
+        "--poisoning", type=str, nargs="+", default=["clean", "internal", "channel", "gradual"], help="Poisoning modes"
     )
-    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44], help="Random seeds")
+    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44, 45, 46, 47, 48, 49, 50, 51], help="Random seeds")
     parser.add_argument("--outdir", type=str, default="runs/experiments", help="Output directory")
     args = parser.parse_args()
 

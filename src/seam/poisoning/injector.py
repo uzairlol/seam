@@ -47,10 +47,53 @@ class PoisonInjector:
 
         return DEFAULT_POISON_PAYLOADS.get(self.env_type, DEFAULT_POISON_PAYLOADS["default"])
 
+    def get_target_action(self) -> str:
+        """Extract the exact target action from the poison payload.
+
+        Returns:
+            The specific action string targeted by the poison rule (e.g. '100', 'stay', '0 100').
+        """
+        import re
+
+        # Look for quoted phrases first: '100', 'stay', '0 100'
+        quotes = re.findall(r"['\"]([^'\"]+)['\"]", self.poison_payload)
+        if quotes:
+            return quotes[0].strip()
+
+        # Fallback to env-specific defaults
+        if self.env_type == "number_guessing":
+            return "100"
+        elif self.env_type == "bargaining_game":
+            return "0 100"
+        elif self.env_type == "resource_foraging":
+            return "stay"
+        return self.poison_payload.strip()
+
     @property
     def is_active(self) -> bool:
         """Return True if poisoning mode is active (not 'clean')."""
-        return self.config.mode != "clean"
+        return self.config.mode not in ("clean", "off")
+
+    def _is_internal_mode(self) -> bool:
+        """Check if config specifies internal memory poisoning."""
+        return (
+            self.config.mode in ("internal", "poisoned")
+            or getattr(self.config, "injection_mode", "internal") == "internal"
+        ) and self.config.mode != "clean"
+
+    def _is_channel_mode(self) -> bool:
+        """Check if config specifies channel broadcast poisoning."""
+        return (
+            self.config.mode == "channel"
+            or getattr(self.config, "injection_mode", "") == "channel"
+        ) and self.config.mode != "clean"
+
+    def _is_gradual_mode(self) -> bool:
+        """Check if config specifies gradual broadcast poisoning."""
+        return (
+            self.config.mode == "gradual"
+            or getattr(self.config, "injection_mode", "") == "gradual"
+        ) and self.config.mode != "clean"
 
     def inject_initial_memory(self, memory_policies: dict[str, BaseMemoryPolicy]) -> bool:
         """Inject poison directly into the target agent's initial memory if mode is 'internal'.
@@ -61,19 +104,34 @@ class PoisonInjector:
         Returns:
             True if injection occurred, False otherwise.
         """
-        if self.config.mode not in ("internal", "poisoned"):
+        if not self._is_internal_mode():
             return False
 
         target_id = self.config.poison_agent_id
         policy = memory_policies.get(target_id)
         if policy:
-            # Seed the poison rule as an experience update or raw state
-            experience = {
-                "observation": {"poison_seed": True},
-                "action": self.poison_payload,
-                "reward": 1.0,
-            }
-            policy.update(experience, client=None)
+            # Seed the poison rule directly into the policy state cleanly
+            if hasattr(policy, "_add_rule"):
+                # StructuredIncrementalPolicy
+                policy._add_rule(self.poison_payload)
+            elif hasattr(policy, "_memory_text"):
+                # NaiveOverwritePolicy
+                policy._memory_text = self.poison_payload
+            elif hasattr(policy, "_buffer"):
+                # RawTrajectoryBufferPolicy
+                policy._buffer.append({
+                    "observation": {"poison_seed": True},
+                    "action": self.poison_payload,
+                    "reward": 0.0,
+                    "shared_peer_context": "",
+                })
+            else:
+                experience = {
+                    "observation": {"poison_seed": True},
+                    "action": self.poison_payload,
+                    "reward": 0.0,
+                }
+                policy.update(experience, client=None)
             logger.info("PoisonInjector: Seeded internal poison into %s", target_id)
             return True
         return False
@@ -103,13 +161,13 @@ class PoisonInjector:
         """
         target_id = self.config.poison_agent_id
 
-        if self.config.mode == "channel":
+        if self._is_channel_mode():
             if self._inject_for_peers(sharing_engine, target_id):
                 logger.info(
                     "PoisonInjector: Injected poison into channel for peers of %s", target_id
                 )
                 return True
-        elif self.config.mode == "gradual" and round_num >= 5:
+        elif self._is_gradual_mode() and round_num >= 5:
             if self._inject_for_peers(sharing_engine, target_id):
                 logger.info(
                     "PoisonInjector: Injected gradual poison at round %d for peers of %s",

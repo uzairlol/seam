@@ -72,6 +72,8 @@ class MemorySharingEngine:
 
         publish_every = max(1, self.config.publish_every_n_rounds)
         if (round_num - 1) % publish_every != 0:
+            # On non-publishing rounds, inboxes persist the most recently routed
+            # peer memories so agents retain shared context between broadcast intervals.
             return counts
 
         # 1. Collect published memory context from each agent

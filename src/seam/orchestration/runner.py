@@ -27,6 +27,7 @@ from seam.utils.reproducibility import set_seed
 from seam.metrics.contamination import (
     compute_contamination_rate,
     compute_poison_adherence,
+    detect_poison_phrases,
 )
 from seam.poisoning.injector import PoisonInjector
 from seam.sharing.engine import MemorySharingEngine
@@ -159,17 +160,22 @@ class EpisodeRunner:
         # Store combined memory for logging/debugging
         per_agent_memories: dict[str, list[str]] = {aid: [] for aid in self.population.agent_ids}
 
+        # Track propagation latency: first round each peer agent gets contaminated
+        peer_propagation_round: dict[str, int | None] = {
+            aid: None for aid in self.population.agent_ids if aid != self.config.poisoning.poison_agent_id
+        }
+
         done = False
         round_num = 0
 
         while not done:
             round_num += 1
 
-            # Inject channel/gradual poison if active
-            self.poison_injector.inject_channel(self.sharing_engine, round_num=round_num)
-
-            # Step sharing engine to process and route memories across topology
+            # Step sharing engine to process and route memories across topology (at round 1, routes initial/published state)
             self.sharing_engine.step(round_num=round_num, memory_policies=self.memory_policies)
+
+            # Inject channel/gradual poison if active (called AFTER sharing step so inbox isn't cleared)
+            self.poison_injector.inject_channel(self.sharing_engine, round_num=round_num)
 
             # Get combined memory contexts (local policy + shared peer context)
             memory_contexts = {}
@@ -185,11 +191,19 @@ class EpisodeRunner:
                 else:
                     memory_contexts[aid] = local_ctx
 
-            # Collect actions from all agents
+            # Determine default actions for observer agents in bargaining game (Issue 8)
+            default_actions = {}
+            if self.config.env.type == "bargaining_game":
+                for aid, agent_obs in obs.items():
+                    if isinstance(agent_obs, dict) and agent_obs.get("role") == "observer":
+                        default_actions[aid] = "wait"
+
+            # Collect actions from agents
             actions = self.population.act_all(
                 observations=obs,
                 action_space=action_space,
                 memory_contexts=memory_contexts,
+                default_actions=default_actions if default_actions else None,
             )
 
             # Step environment
@@ -198,6 +212,16 @@ class EpisodeRunner:
             rewards = step_result["rewards"]
             done = step_result["done"]
             info = step_result["info"]
+
+            # Contamination detection keywords for latency tracking
+            poison_payload = self.poison_injector.poison_payload
+            raw_keywords = [
+                phrase.strip()
+                for phrase in re.findall(r"['\"]([^'\"]+)['\"]", poison_payload)
+                if phrase.strip()
+            ]
+            if not raw_keywords:
+                raw_keywords = ["CRITICAL STRATEGY RULE"]
 
             # Update memories & record logs
             for aid in self.population.agent_ids:
@@ -212,6 +236,14 @@ class EpisodeRunner:
                 updated_mem = self.memory_policies[aid].update(
                     experience, shared_context=shared_ctx, client=self.client
                 )
+
+                # Check if this peer agent is now contaminated
+                if (
+                    aid in peer_propagation_round
+                    and peer_propagation_round[aid] is None
+                    and detect_poison_phrases(updated_mem, raw_keywords)
+                ):
+                    peer_propagation_round[aid] = round_num
 
                 per_agent_actions[aid].append(act)
                 per_agent_rewards[aid].append(rew)
@@ -250,17 +282,14 @@ class EpisodeRunner:
             aid: compute_memory_length(mems) for aid, mems in per_agent_memories.items()
         }
 
-        # Contamination metrics
+        # Contamination metrics (Issue 4 & Issue 5)
         poison_payload = self.poison_injector.poison_payload
         quoted_phrases = re.findall(r"['\"]([^'\"]+)['\"]", poison_payload)
         extracted_keywords = [phrase.strip() for phrase in quoted_phrases if phrase.strip()]
         if not extracted_keywords:
-            extracted_keywords = [
-                piece.strip()
-                for piece in re.findall(r"\b\d+\s+\d+\b|\b\d+\b|\b[A-Za-z]+\b", poison_payload)
-                if piece.strip()
-            ]
+            extracted_keywords = ["CRITICAL STRATEGY RULE"]
         poison_keywords = sorted({kw.lower() for kw in extracted_keywords if kw.strip()})
+
         peer_contamination_rate = (
             compute_contamination_rate(
                 per_agent_memories=per_agent_memories,
@@ -271,14 +300,19 @@ class EpisodeRunner:
             else 0.0
         )
 
+        target_poison_action = self.poison_injector.get_target_action()
         per_agent_poison_adherence = (
             {
-                aid: compute_poison_adherence(acts, target_pattern=poison_payload)
+                aid: compute_poison_adherence(acts, target_pattern=target_poison_action)
                 for aid, acts in per_agent_actions.items()
             }
             if self.poison_injector.is_active
             else {aid: 0.0 for aid in self.population.agent_ids}
         )
+
+        # Propagation latency: rounds until peer agents first contaminated
+        latencies = [r for r in peer_propagation_round.values() if r is not None]
+        mean_propagation_latency = float(sum(latencies) / len(latencies)) if latencies else None
 
         summary = {
             "run_id": self.logger_inst.run_id,
@@ -292,6 +326,8 @@ class EpisodeRunner:
             "per_agent_memory_lengths": per_agent_memory_lengths,
             "peer_contamination_rate": peer_contamination_rate,
             "per_agent_poison_adherence": per_agent_poison_adherence,
+            "propagation_latency": mean_propagation_latency,
+            "peer_propagation_round": peer_propagation_round,
         }
 
         self.logger_inst.log_episode_end(final_score=ground_truth_score, summary_info=summary)

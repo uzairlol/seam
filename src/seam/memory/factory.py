@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from seam.memory.base_memory import BaseMemoryPolicy
 from seam.memory.naive_overwrite import NaiveOverwritePolicy
+from seam.memory.no_memory import NoMemoryPolicy
 from seam.memory.raw_trajectory import RawTrajectoryBufferPolicy
 from seam.memory.structured_incremental import StructuredIncrementalPolicy
 from seam.orchestration.config_loader import MemoryConfig
@@ -23,7 +24,9 @@ def create_memory_policy(config: MemoryConfig) -> BaseMemoryPolicy:
     """
     policy_type = config.policy.lower().strip()
 
-    if policy_type == "naive_overwrite":
+    if policy_type in ("none", "no_memory"):
+        return NoMemoryPolicy()
+    elif policy_type == "naive_overwrite":
         return NaiveOverwritePolicy(max_tokens=config.max_tokens)
     elif policy_type == "raw_trajectory_buffer":
         return RawTrajectoryBufferPolicy(window_size=config.window_size)
@@ -32,5 +35,5 @@ def create_memory_policy(config: MemoryConfig) -> BaseMemoryPolicy:
     else:
         raise ValueError(
             f"Unknown memory policy '{config.policy}'. "
-            "Supported policies: 'naive_overwrite', 'raw_trajectory_buffer', 'structured_incremental'."
+            "Supported policies: 'no_memory', 'naive_overwrite', 'raw_trajectory_buffer', 'structured_incremental'."
         )

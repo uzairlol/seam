@@ -104,16 +104,23 @@ class StructuredIncrementalPolicy(BaseMemoryPolicy):
                     line_str = line.strip()
                     if line_str and not line_str.startswith("==="):
                         peer_rule = line_str.split("]: ", 1)[-1] if "]: " in line_str else line_str
-                        self._add_rule(peer_rule)
+                        # Clean prefix like 'Rule #X: ' if present
+                        peer_rule = re.sub(r"^(?:-\s*)?Rule\s*#?\d+:\s*", "", peer_rule).strip()
+                        if peer_rule:
+                            self._add_rule(peer_rule)
 
         self._prune_playbook()
         return self.get_context()
 
     def _add_rule(self, rule_text: str) -> None:
-        """Add a new active rule to the playbook."""
+        """Add a new active rule to the playbook if not already present."""
         clean_rule = rule_text.strip()
         if not clean_rule:
             return
+        # Prevent identical duplicate active rules
+        for entry in self._playbook:
+            if entry.get("status") == "active" and entry.get("rule", "").strip().lower() == clean_rule.lower():
+                return
         self._playbook.append(
             {
                 "id": self._next_id,
