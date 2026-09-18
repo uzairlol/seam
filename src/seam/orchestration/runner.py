@@ -6,7 +6,7 @@ import gc
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 from seam.agents.decoding import OllamaClient
 from seam.agents.population import AgentPopulation
@@ -55,10 +55,11 @@ class EpisodeRunner:
         self.config = config
         self.seed = seed if seed is not None else (config.seeds[0] if config.seeds else 0)
         self.client = client
-        self.logger_inst = RunLogger(config=config, seed=seed, base_dir=base_dir)
+        self.logger_inst = RunLogger(config=config, seed=self.seed, base_dir=base_dir)
 
         # 1. Initialize environment based on config
         env_type = config.env.type.lower().strip()
+        self.env: Union[ResourceForagingGame, BargainingGame, NumberGuessingGame]
         if env_type == "resource_foraging":
             self.env = ResourceForagingGame(
                 n_agents=config.env.n_agents,
@@ -162,7 +163,9 @@ class EpisodeRunner:
 
         # Track propagation latency: first round each peer agent gets contaminated
         peer_propagation_round: dict[str, int | None] = {
-            aid: None for aid in self.population.agent_ids if aid != self.config.poisoning.poison_agent_id
+            aid: None
+            for aid in self.population.agent_ids
+            if aid != self.config.poisoning.poison_agent_id
         }
 
         done = False
@@ -240,11 +243,15 @@ class EpisodeRunner:
                 shared_ctx = self.sharing_engine.get_shared_context(aid)
                 if is_observer:
                     # Observers did not play this round; do not pollute playbook with spurious action=wait reward=0 experiences
-                    updated_mem = self.memory_policies[aid].update(
-                        {"observation": ob, "action": "", "reward": 0.0},
-                        shared_context=shared_ctx,
-                        client=None,
-                    ) if shared_ctx else self.memory_policies[aid].get_context()
+                    updated_mem = (
+                        self.memory_policies[aid].update(
+                            {"observation": ob, "action": "", "reward": 0.0},
+                            shared_context=shared_ctx,
+                            client=None,
+                        )
+                        if shared_ctx
+                        else self.memory_policies[aid].get_context()
+                    )
                 else:
                     experience = {"observation": ob, "action": act, "reward": rew}
                     updated_mem = self.memory_policies[aid].update(

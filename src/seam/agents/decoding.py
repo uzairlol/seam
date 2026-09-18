@@ -143,6 +143,7 @@ class OllamaClient:
             stream=False,
         )
         latency_ms = int((time.perf_counter() - start) * 1000)
+        assert response.response is not None, "Ollama generate returned no response text"  # type: ignore[union-attr]
         response_text: str = response.response  # type: ignore[union-attr]
         logger.info(
             "complete model=%s prompt_len=%d response_len=%d latency_ms=%d",
@@ -158,7 +159,7 @@ class OllamaClient:
         start = time.perf_counter()
         response = self._client.embeddings(model=self._config.model_name, prompt=text)
         latency_ms = int((time.perf_counter() - start) * 1000)
-        embedding: list[float] = response.embedding  # type: ignore[union-attr]
+        embedding: list[float] = list(response.embedding)  # type: ignore[union-attr]
         logger.info(
             "embed model=%s text_len=%d embedding_dim=%d latency_ms=%d",
             self._config.model_name,

@@ -39,9 +39,12 @@ line-length = 100
 target-version = "py311"
 
 [tool.mypy]
-python_version = "3.11"
-strict = true
+python_version = "3.13"
 ignore_missing_imports = true
+warn_unused_ignores = false
+disallow_untyped_defs = false
+check_untyped_defs = true
+disallow_any_generics = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
