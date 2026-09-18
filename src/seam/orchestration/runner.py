@@ -231,11 +231,25 @@ class EpisodeRunner:
                 agent = self.population.get_agent(aid)
                 prompt = getattr(agent, "last_prompt", "")
 
-                experience = {"observation": ob, "action": act, "reward": rew}
-                shared_ctx = self.sharing_engine.get_shared_context(aid)
-                updated_mem = self.memory_policies[aid].update(
-                    experience, shared_context=shared_ctx, client=self.client
+                is_observer = (
+                    self.config.env.type == "bargaining_game"
+                    and isinstance(ob, dict)
+                    and ob.get("role") == "observer"
                 )
+
+                shared_ctx = self.sharing_engine.get_shared_context(aid)
+                if is_observer:
+                    # Observers did not play this round; do not pollute playbook with spurious action=wait reward=0 experiences
+                    updated_mem = self.memory_policies[aid].update(
+                        {"observation": ob, "action": "", "reward": 0.0},
+                        shared_context=shared_ctx,
+                        client=None,
+                    ) if shared_ctx else self.memory_policies[aid].get_context()
+                else:
+                    experience = {"observation": ob, "action": act, "reward": rew}
+                    updated_mem = self.memory_policies[aid].update(
+                        experience, shared_context=shared_ctx, client=self.client
+                    )
 
                 # Check if this peer agent is now contaminated
                 if (
