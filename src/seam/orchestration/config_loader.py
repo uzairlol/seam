@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -16,7 +15,7 @@ class ModelConfig(BaseModel):
     model_name: str
     base_url: str
     temperature: float = 0.0
-    seed: Optional[int] = None
+    seed: int | None = None
     max_tokens: int = 512
     top_p: float = 1.0
     request_timeout: int = 60

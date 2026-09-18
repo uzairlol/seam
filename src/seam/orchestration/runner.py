@@ -6,7 +6,7 @@ import gc
 import logging
 import re
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Self
 
 from seam.agents.decoding import OllamaClient
 from seam.agents.population import AgentPopulation
@@ -21,16 +21,15 @@ from seam.metrics.collapse import (
     compute_memory_length,
     compute_self_bleu,
 )
-from seam.orchestration.config_loader import ExperimentConfig
-from seam.utils.reproducibility import set_seed
-
 from seam.metrics.contamination import (
     compute_contamination_rate,
     compute_poison_adherence,
     detect_poison_phrases,
 )
+from seam.orchestration.config_loader import ExperimentConfig
 from seam.poisoning.injector import PoisonInjector
 from seam.sharing.engine import MemorySharingEngine
+from seam.utils.reproducibility import set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,7 @@ class EpisodeRunner:
 
         # 1. Initialize environment based on config
         env_type = config.env.type.lower().strip()
-        self.env: Union[ResourceForagingGame, BargainingGame, NumberGuessingGame]
+        self.env: ResourceForagingGame | BargainingGame | NumberGuessingGame
         if env_type == "resource_foraging":
             self.env = ResourceForagingGame(
                 n_agents=config.env.n_agents,
@@ -126,13 +125,13 @@ class EpisodeRunner:
             try:
                 self.env.reset(seed=0)
             except Exception:  # noqa: BLE001
-                pass  # best-effort
+                logger.debug("EpisodeRunner: env.reset(seed=0) failed during cleanup — ignored.")
 
         # 4. Force GC — reclaim any cyclic references lingering in response objects
         gc.collect()
         logger.debug("EpisodeRunner: gc.collect() completed.")
 
-    def __enter__(self) -> "EpisodeRunner":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:

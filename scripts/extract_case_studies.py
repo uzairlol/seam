@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
-def load_events(events_file: Path) -> List[Dict[str, Any]]:
+def load_events(events_file: Path) -> list[dict[str, Any]]:
     events = []
     if not events_file.exists():
         return events
@@ -19,7 +19,7 @@ def load_events(events_file: Path) -> List[Dict[str, Any]]:
     return events
 
 
-def extract_case_studies() -> Dict[str, Any]:
+def extract_case_studies() -> dict[str, Any]:
     runs_dir = Path("runs/experiments/resource_foraging")
     reports_dir = Path("reports")
     reports_dir.mkdir(parents=True, exist_ok=True)

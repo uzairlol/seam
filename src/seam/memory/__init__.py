@@ -9,8 +9,8 @@ from seam.memory.structured_incremental import StructuredIncrementalPolicy
 
 __all__ = [
     "BaseMemoryPolicy",
-    "NoMemoryPolicy",
     "NaiveOverwritePolicy",
+    "NoMemoryPolicy",
     "RawTrajectoryBufferPolicy",
     "StructuredIncrementalPolicy",
     "create_memory_policy",

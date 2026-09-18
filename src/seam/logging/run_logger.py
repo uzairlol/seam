@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,12 +33,12 @@ class RunLogger:
     ) -> None:
         self.config = config
         self.seed = seed
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+        self.timestamp = datetime.now(UTC).isoformat()
 
         if run_id:
             self.run_id = run_id
         else:
-            ts_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            ts_str = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             self.run_id = f"{config.experiment_id}_seed{seed}_{ts_str}"
 
         self.run_dir = Path(base_dir) / self.run_id
@@ -110,7 +110,7 @@ class RunLogger:
             "memory_state": memory_state,
             "latency_ms": latency_ms,
             "info": info or {},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         with self.events_file.open("a", encoding="utf-8") as f:
@@ -132,7 +132,7 @@ class RunLogger:
             "run_id": self.run_id,
             "final_score": final_score,
             "summary_info": summary_info or {},
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
         }
         save_json(summary_data, summary_file)
         logger.info("Completed run %s — final score: %.4f", self.run_id, final_score)

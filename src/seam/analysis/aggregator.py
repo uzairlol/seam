@@ -31,7 +31,7 @@ class ResultAggregator:
         if summary_csv.exists():
             try:
                 return pd.read_csv(summary_csv)
-            except Exception as exc:
+            except OSError as exc:
                 logger.warning("Could not read %s: %s — scanning subdirectories", summary_csv, exc)
 
         # Fallback: scan subdirectories recursively for summary.json files

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
 import pandas as pd
 
 

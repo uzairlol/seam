@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from seam.metrics.contamination import (
     compute_contamination_rate,
     compute_poison_adherence,
