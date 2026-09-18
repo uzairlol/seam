@@ -196,10 +196,9 @@ class ResourceForagingGame(BaseEnv):
         spawned_this_round = 0
         for r in range(self._grid_size):
             for c in range(self._grid_size):
-                if self._grid[r, c] == 0:
-                    if self._rng.random() < self._resource_spawn_rate:
-                        self._grid[r, c] = 1
-                        spawned_this_round += 1
+                if self._grid[r, c] == 0 and self._rng.random() < self._resource_spawn_rate:
+                    self._grid[r, c] = 1
+                    spawned_this_round += 1
         self._total_spawned += spawned_this_round
 
         # Episode termination
@@ -253,7 +252,7 @@ class ResourceForagingGame(BaseEnv):
             ]
             for r in range(self._grid_size)
         ]
-        for aid, (r, c) in self._positions.items():
+        for r, c in self._positions.values():
             display[r][c] = "A"  # agent marker overrides resource display
         for row in display:
             lines.append(" ".join(row))

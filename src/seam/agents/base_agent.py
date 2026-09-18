@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Self
 
 from seam.agents.decoding import OllamaClient
 from seam.orchestration.config_loader import ModelConfig
@@ -48,7 +48,7 @@ class BaseAgent:
             self.client.close()
             logger.debug("[%s] OllamaClient closed.", self.agent_id)
 
-    def __enter__(self) -> "BaseAgent":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:

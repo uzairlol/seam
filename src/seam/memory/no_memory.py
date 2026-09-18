@@ -17,7 +17,6 @@ class NoMemoryPolicy(BaseMemoryPolicy):
 
     def reset(self) -> None:
         """No-op: no internal memory state to reset."""
-        pass
 
     def update(
         self,
@@ -38,4 +37,3 @@ class NoMemoryPolicy(BaseMemoryPolicy):
 
     def from_dict(self, data: dict[str, Any]) -> None:
         """Restore memory state (no-op)."""
-        pass

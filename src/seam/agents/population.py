@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Self
 
 from seam.agents.base_agent import BaseAgent
 from seam.agents.decoding import OllamaClient
@@ -57,7 +57,7 @@ class AgentPopulation:
             self.shared_client.close()
             logger.debug("AgentPopulation shared OllamaClient closed.")
 
-    def __enter__(self) -> "AgentPopulation":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:

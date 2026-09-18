@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 
-def analyze_bargaining_runs() -> Dict[str, Any]:
+def analyze_bargaining_runs() -> dict[str, Any]:
     runs_dir = Path("runs/experiments/bargaining_game")
     reports_dir = Path("reports")
     reports_dir.mkdir(parents=True, exist_ok=True)

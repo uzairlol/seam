@@ -10,8 +10,8 @@ from seam.analysis.aggregator import ResultAggregator
 from seam.analysis.plotting import (
     plot_collapse_performance_tradeoff,
     plot_contamination_propagation,
-    plot_metric_condition_heatmap,
     plot_memory_collapse,
+    plot_metric_condition_heatmap,
     plot_performance_comparison,
     plot_poisoning_performance_comparison,
     plot_run_level_distributions,

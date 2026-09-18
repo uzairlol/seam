@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -97,7 +97,7 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def audit_invariants(df: pd.DataFrame) -> Dict[str, Any]:
+def audit_invariants(df: pd.DataFrame) -> dict[str, Any]:
     """Check core audit invariants specified in docs/audit-history.md."""
     df = normalize_dataframe(df)
     violations = []
@@ -150,7 +150,7 @@ def audit_invariants(df: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
-def run_statistical_suite(df: pd.DataFrame) -> Tuple[List[HypothesisTestResult], Dict[str, Any]]:
+def run_statistical_suite(df: pd.DataFrame) -> tuple[list[HypothesisTestResult], dict[str, Any]]:
     """Run full hypothesis testing suite on experimental data across environments."""
     df = normalize_dataframe(df)
     audit_results = audit_invariants(df)
@@ -249,7 +249,7 @@ def run_statistical_suite(df: pd.DataFrame) -> Tuple[List[HypothesisTestResult],
         },
     ]
 
-    results: List[HypothesisTestResult] = []
+    results: list[HypothesisTestResult] = []
 
     for env in df["environment"].unique():
         env_df = df[df["environment"] == env]

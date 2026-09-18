@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from seam.metrics.collapse import (
     compute_action_entropy,
     compute_cosine_similarity,

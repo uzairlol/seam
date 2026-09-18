@@ -25,7 +25,7 @@ __all__ = [
 def __getattr__(name: str):  # type: ignore[override]
     """Lazy-load heavy submodules to break circular imports at collection time."""
     if name == "EpisodeRunner":
-        from seam.orchestration.runner import EpisodeRunner  # noqa: PLC0415
+        from seam.orchestration.runner import EpisodeRunner
 
         return EpisodeRunner
     raise AttributeError(f"module 'seam.orchestration' has no attribute {name!r}")

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-import subprocess
-from datetime import datetime, timezone
-from typing import Optional
-
 import random
+import subprocess
+from datetime import UTC, datetime
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ def set_seed(seed: int) -> None:
     logger.debug("Set global seed: %d (envs use explicit np.random.default_rng(seed))", seed)
 
 
-def get_git_commit_hash() -> Optional[str]:
+def get_git_commit_hash() -> str | None:
     """Return the current git commit hash (short form), or None if unavailable.
 
     Returns:
@@ -42,6 +41,7 @@ def get_git_commit_hash() -> Optional[str]:
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -63,6 +63,7 @@ def get_pip_freeze() -> str:
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         if result.returncode == 0:
             return result.stdout
@@ -85,5 +86,5 @@ def generate_run_id(experiment_id: str, seed: int) -> str:
     Returns:
         A run ID string suitable for use as a directory or file prefix.
     """
-    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%S")
+    timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S")
     return f"{experiment_id}_{seed}_{timestamp}"

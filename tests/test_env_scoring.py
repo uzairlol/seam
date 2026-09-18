@@ -10,7 +10,6 @@ from seam.envs.bargaining_game import BargainingGame
 from seam.envs.number_guessing import NumberGuessingGame
 from seam.envs.resource_foraging import ResourceForagingGame
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
