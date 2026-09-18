@@ -311,7 +311,7 @@ def run_statistical_suite(df: pd.DataFrame) -> Tuple[List[HypothesisTestResult],
         sorted_indices = np.argsort(raw_p)
         sorted_p = np.array(raw_p)[sorted_indices]
 
-        # FDR computation
+        # FDR computation via Benjamini-Hochberg procedure
         q_vals = np.zeros(n_tests)
         min_q = 1.0
         for i in range(n_tests - 1, -1, -1):
@@ -320,6 +320,7 @@ def run_statistical_suite(df: pd.DataFrame) -> Tuple[List[HypothesisTestResult],
             min_q = min(min_q, q)
             q_vals[i] = min_q
 
+        # Map monotonic adjusted q-values back from sorted rank order to the original test order
         fdr_p = np.zeros(n_tests)
         fdr_p[sorted_indices] = np.clip(q_vals, 0.0, 1.0)
 

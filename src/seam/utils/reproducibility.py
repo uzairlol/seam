@@ -16,12 +16,18 @@ logger = logging.getLogger(__name__)
 def set_seed(seed: int) -> None:
     """Set global random seeds for Python random and NumPy for determinism.
 
+    Note:
+        Environments in SEAM use independent `np.random.default_rng(seed)` generators
+        initialized during `env.reset(seed)`. Setting `np.random.seed()` here provides
+        global compatibility for any legacy library calls, while per-episode
+        environment reproducibility is guaranteed by passing `seed` to `env.reset(seed)`.
+
     Args:
         seed: Random seed integer.
     """
     random.seed(seed)
     np.random.seed(seed)
-    logger.debug("Set global seed: %d", seed)
+    logger.debug("Set global seed: %d (envs use explicit np.random.default_rng(seed))", seed)
 
 
 def get_git_commit_hash() -> Optional[str]:

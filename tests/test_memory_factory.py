@@ -37,6 +37,18 @@ def test_create_memory_policy_structured() -> None:
     assert pol.max_playbook_entries == 12
 
 
+def test_create_memory_policy_no_memory() -> None:
+    """Factory should instantiate NoMemoryPolicy for 'no_memory' and 'none'."""
+    cfg = MemoryConfig(policy="no_memory")
+    pol = create_memory_policy(cfg)
+    assert pol.get_context() == ""
+    assert pol.update({"action": "act", "reward": 1.0}) == ""
+
+    cfg_none = MemoryConfig(policy="none")
+    pol_none = create_memory_policy(cfg_none)
+    assert pol_none.get_context() == ""
+
+
 def test_create_memory_policy_invalid() -> None:
     """Factory should raise ValueError for invalid policy name."""
     cfg = MemoryConfig(policy="nonexistent_policy")

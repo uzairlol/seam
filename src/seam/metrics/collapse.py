@@ -57,7 +57,7 @@ def compute_self_bleu(memory_sequence: list[str], max_n: int = 2) -> float:
     clean_seq = [_clean_memory_text(m) for m in memory_sequence if m.strip()]
     clean_seq = [m for m in clean_seq if m]
     if len(clean_seq) <= 1:
-        return 1.0
+        return 0.0
 
     scores: list[float] = []
     for i, candidate in enumerate(clean_seq):
