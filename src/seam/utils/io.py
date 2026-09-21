@@ -31,7 +31,7 @@ def load_yaml(path: str | Path) -> dict[str, Any]:
         raise FileNotFoundError(f"YAML file not found: {p}")
     logger.debug("Loading YAML from %s", p)
     with p.open("r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh)  # type: ignore[no-any-return]
+        return yaml.safe_load(fh)
 
 
 def save_yaml(data: dict[str, Any], path: str | Path) -> None:

@@ -36,7 +36,7 @@ class RunRehydrator:
             raise FileNotFoundError(f"Metadata file missing in {self.run_dir}")
         import json
 
-        return json.loads(self.metadata_file.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+        return json.loads(self.metadata_file.read_text(encoding="utf-8"))
 
     def load_config(self) -> dict[str, Any]:
         """Load config_snapshot.yaml content."""
@@ -56,7 +56,7 @@ class RunRehydrator:
             return {}
         import json
 
-        return json.loads(self.summary_file.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+        return json.loads(self.summary_file.read_text(encoding="utf-8"))
 
     def to_dataframe(self) -> pd.DataFrame:
         """Convert all step events into a pandas DataFrame.

@@ -103,7 +103,7 @@ class NumberGuessingGame(BaseEnv):
 
         self._round += 1
         agent_ids = list(self._histories.keys())
-        rewards: dict[str, float] = {aid: 0.0 for aid in agent_ids}
+        rewards: dict[str, float] = dict.fromkeys(agent_ids, 0.0)
         feedbacks: dict[str, str] = {}
 
         # Evaluate guesses

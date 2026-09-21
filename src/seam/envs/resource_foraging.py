@@ -115,7 +115,7 @@ class ResourceForagingGame(BaseEnv):
         )
         self._positions = {}
         self._scores = {}
-        for agent_id, flat_pos in zip(agent_ids, positions_flat):
+        for agent_id, flat_pos in zip(agent_ids, positions_flat, strict=True):
             r, c = divmod(int(flat_pos), self._grid_size)
             self._positions[agent_id] = [r, c]
             self._scores[agent_id] = 0
@@ -146,7 +146,7 @@ class ResourceForagingGame(BaseEnv):
 
         self._round += 1
         agent_ids = list(self._positions.keys())
-        rewards: dict[str, float] = {aid: 0.0 for aid in agent_ids}
+        rewards: dict[str, float] = dict.fromkeys(agent_ids, 0.0)
 
         # 1. Apply movement
         for aid in agent_ids:
@@ -164,7 +164,7 @@ class ResourceForagingGame(BaseEnv):
             cell = (r, c)
             cell_occupants.setdefault(cell, []).append(aid)
         collision_agents: set[str] = set()
-        for cell, occupants in cell_occupants.items():
+        for occupants in cell_occupants.values():
             if len(occupants) > 1:
                 collision_agents.update(occupants)
 

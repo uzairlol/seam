@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN pip install -e .
 
-CMD ["python", "scripts/run_experiments.py", "--config", "configs/experiment.yaml"]
+CMD ["python", "scripts/run_experiments.py", "--env", "resource_foraging", "--model", "qwen2.5:7b", "--outdir", "runs/experiments"]

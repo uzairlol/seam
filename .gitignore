@@ -71,6 +71,8 @@ dmypy.json
 # Test and coverage
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 .tox/
 

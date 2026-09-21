@@ -92,7 +92,13 @@ class ResultAggregator:
         grouped = self.df.groupby(group_cols).agg(agg_dict)
 
         # Flatten multi-level columns
-        grouped.columns = [f"{col}_{stat}" for col, stat in grouped.columns]
+        flat_columns: list[str] = []
+        for col in grouped.columns:
+            if isinstance(col, tuple):
+                flat_columns.append("_".join(str(part) for part in col))
+            else:
+                flat_columns.append(str(col))
+        grouped.columns = flat_columns
         grouped = grouped.reset_index()
 
         # Compute Standard Error of Mean (SEM = std / sqrt(n)) and 95% CI using a t distribution.

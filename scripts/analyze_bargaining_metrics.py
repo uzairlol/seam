@@ -25,7 +25,7 @@ def analyze_bargaining_runs() -> dict[str, Any]:
         if not events_file.exists() or not summary_file.exists():
             continue
 
-        with open(summary_file, "r", encoding="utf-8") as f:
+        with open(summary_file, encoding="utf-8") as f:
             summary_data = json.load(f)
 
         # Example: exp_naive_overwrite_off_clean_seed40_...
@@ -35,7 +35,7 @@ def analyze_bargaining_runs() -> dict[str, Any]:
         total_proposer_shares = []
         total_welfare = 0.0
 
-        with open(events_file, "r", encoding="utf-8") as f:
+        with open(events_file, encoding="utf-8") as f:
             seen_rounds = set()
             for line in f:
                 ev = json.loads(line)

@@ -178,7 +178,7 @@ def test_step_after_done_raises() -> None:
         env.step({aid: rng.choice(env.action_space) for aid in agent_ids})
 
     with pytest.raises(RuntimeError):
-        env.step({aid: "stay" for aid in agent_ids})
+        env.step(dict.fromkeys(agent_ids, "stay"))
 
 
 # ---------------------------------------------------------------------------

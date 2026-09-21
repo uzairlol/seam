@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):  # type: ignore[override]
+def __getattr__(name: str):
     """Lazy-load heavy submodules to break circular imports at collection time."""
     if name == "EpisodeRunner":
         from seam.orchestration.runner import EpisodeRunner

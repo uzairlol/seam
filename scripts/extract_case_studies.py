@@ -11,7 +11,7 @@ def load_events(events_file: Path) -> list[dict[str, Any]]:
     events = []
     if not events_file.exists():
         return events
-    with open(events_file, "r", encoding="utf-8") as f:
+    with open(events_file, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:

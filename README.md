@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Self‑evolving large language model (LLM) agents improve through iterative memory updates, yet unchecked updates often cause *memory collapse*—a rapid drift into repetitive, stale behaviours that can be quantified via high Self‑BLEU scores. Simultaneously, shared memory channels expose agents to *contamination*: non‑transferable lessons from a single agent can propagate and degrade the performance of an entire population. This project investigates the interplay of these phenomena in a multi‑agent setting where several independent agents collaboratively exchange compressed memory artifacts. We introduce three memory‑update mechanisms—naïve overwrite, raw trajectory buffering, and structured incremental updates—paired with three communication topologies (off, full broadcast, ring). Across three deterministic resource‑allocation tasks (resource foraging, bargaining, number guessing), we conduct a full factorial sweep (≈162 runs per seed, 5 seeds) and measure collapse (Self‑BLEU, embedding cosine, action entropy), contamination (poison spread latency and fraction), and performance (cumulative reward). Our results show that structured incremental updates combined with ring topology preserve a 55× higher mean task score (0.180 ± 0.03) relative to naive overwrite (0.003 ± 0.001) while limiting contamination propagation. These findings elucidate how memory‑policy design and network topology jointly govern stability and efficacy in multi‑agent self‑evolution, offering concrete guidance for future memory‑augmented agent systems.
+Self‑evolving large language model (LLM) agents improve through iterative memory updates, yet unchecked updates often cause *memory collapse*—a rapid drift into repetitive, stale behaviours that can be quantified via high Self‑BLEU scores. Simultaneously, shared memory channels expose agents to *contamination*: non‑transferable lessons from a single agent can propagate and degrade the performance of an entire population. This project investigates the interplay of these phenomena in a multi‑agent setting where several independent agents collaboratively exchange compressed memory artifacts. We introduce three memory‑update mechanisms—naïve overwrite, raw trajectory buffering, and structured incremental updates—paired with three communication topologies (off, full broadcast, ring). Across three deterministic resource‑allocation tasks (resource foraging, bargaining, number guessing), we conduct a full factorial sweep (≈162 runs per seed, 5 seeds) and measure collapse (Self‑BLEU, embedding cosine, action entropy), contamination (poison spread latency and fraction), and performance (cumulative reward). The design isolates how memory‑policy design and network topology jointly govern stability and efficacy in multi‑agent self‑evolution, providing a controlled testbed for future memory‑augmented agent systems.
 
 ---
 
@@ -52,11 +52,11 @@ Three task environments with objective, deterministic scoring (no LLM judge need
 
 ### Memory policies (ablation)
 
-| Policy                        | Mechanism                                               | Expected behaviour                                       |
-| ----------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
-| Naive Overwrite               | Full LLM rewrite of memory each round                   | Fast collapse via brevity bias                           |
-| Raw Trajectory Buffer         | Sliding window of raw`(state, action, reward)` tuples | Slower collapse, noisier                                 |
-| Structured Incremental Update | ACE‑style Generate→Reflect→Curate playbook           | Most collapse‑resistant; explicit deprecation mechanism |
+| Policy                        | Mechanism                                                | Expected behaviour                                       |
+| ----------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| Naive Overwrite               | Full LLM rewrite of memory each round                    | Fast collapse via brevity bias                           |
+| Raw Trajectory Buffer         | Sliding window of raw `(state, action, reward)` tuples   | Slower collapse, noisier                                 |
+| Structured Incremental Update | ACE‑style Generate→Reflect→Curate playbook              | Most collapse‑resistant; explicit deprecation mechanism |
 
 ### Shared channel & Communication Topologies
 
@@ -96,54 +96,6 @@ One agent is seeded with a plausible but non‑transferable lesson at round 0.
 - Per‑round regret vs. optimal policy
 - Inter‑agent reward variance
 
-### Quantitative Results & Empirical Findings
-
-Our full factorial sweep (162 runs across 5 seeds and 3 deterministic task domains) yields key insights into the interaction between memory policies, network topologies, and contamination dynamics.
-
-#### Resource Foraging Performance & Metric Summary
-
-| Memory Policy | Topology | Condition | Score (Mean ± 95% CI) | Self-BLEU (Mean ± 95% CI) | Contamination Rate |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Structured Incremental** | Isolated (Off) | Clean | **0.1801** [0.0807, 0.2796] | 0.9976 [0.9976, 0.9976] | 0.00% |
-| **Structured Incremental** | Ring | Clean | **0.1699** [0.1072, 0.2326] | 0.9976 [0.9976, 0.9976] | 0.00% |
-| **Structured Incremental** | Full Broadcast | Clean | **0.1558** [0.0196, 0.2921] | 0.9976 [0.9976, 0.9976] | 0.00% |
-| **Raw Trajectory Buffer** | Ring | Clean | 0.0667 [0.0415, 0.0920] | 0.9993 [0.9988, 0.9998] | 0.00% |
-| **Raw Trajectory Buffer** | Full Broadcast | Clean | 0.0438 [0.0000, 0.1346] | 0.9993 [0.9988, 0.9998] | 0.00% |
-| **Naïve Overwrite** | Isolated (Off) | Clean | 0.0033 [0.0000, 0.0177] | 0.9992 [0.9959, 1.0000] | 0.00% |
-| **Naïve Overwrite** | Ring / Broadcast | Clean | 0.0000 [0.0000, 0.0000] | 0.9988 [0.9935, 1.0000] | 0.00% |
-
----
-
-### Empirical Visualizations
-
-#### 1. Task Performance Comparison
-Structured Incremental updates achieve a **~55× higher mean score** than Naïve Overwrite in multi-agent resource foraging.
-
-![Performance Comparison](figures/resource_foraging/performance_comparison.png)
-
-#### 2. Memory Collapse & Trajectory Repetition
-Naïve Overwrite rapidly suffers from **brevity bias**, reducing self-reflections into stale, non-actionable abstractions with extreme Self-BLEU scores ($\ge 0.998$).
-
-![Memory Collapse Trajectory](figures/resource_foraging/memory_collapse.png)
-
-#### 3. Contamination Propagation Dynamics
-Full Broadcast topologies suffer from rapid poison propagation when an agent publishes non-transferable lessons, whereas **Ring Topology** serves as a natural structural dampener.
-
-![Contamination Propagation](figures/resource_foraging/contamination_propagation.png)
-
----
-
-### Key Scientific Takeaways
-
-1. **Structured Curation Resists Memory Collapse**:
-   Decomposing memory operations into explicit **Generate $\rightarrow$ Reflect $\rightarrow$ Curate** stages with rule deprecation maintains action entropy and prevents agents from entering degenerate behavior loops.
-
-2. **Brevity Bias Drives the Echo Trap**:
-   Without explicit length or structural constraints, LLM self-reflections naturally collapse into over-compressed summary statements, destroying environmental strategy detail within $\approx 5$ rounds.
-
-3. **Topology Acts as a Structural Defense**:
-   Shared broadcast channels accelerate knowledge distribution but create single-point vulnerabilities under memory poisoning. **Ring Topology** achieves near-optimal task reward while mitigating the speed and fraction of contamination spread.
-
 ---
 
 ## Tech stack
@@ -151,14 +103,15 @@ Full Broadcast topologies suffer from rapid poison propagation when an agent pub
 | Component              | Choice                                                                       |
 | ---------------------- | ---------------------------------------------------------------------------- |
 | LLM inference          | [Ollama](https://ollama.com) — local, deterministic, no API cost             |
-| Primary model          | `qwen2.5:7b-instruct`                                                      |
-| Secondary model        | `llama3.1:8b-instruct` (ablation)                                          |
+| Primary model          | `qwen2.5:7b`                                                               |
+| Secondary model        | `llama3.1:8b` (ablation)                                                   |
 | Embedder               | `nomic-embed-text` via Ollama                                              |
 | Config                 | YAML + Pydantic                                                              |
 | Logging                | Append‑only JSONL per run                                                   |
 | Analysis               | pandas, scipy, matplotlib, seaborn                                           |
 | Language               | Python 3.11+                                                                |
 | Deterministic decoding | `temperature=0` (main experiment); sampled‑decoding control also included |
+| Tooling                | ruff, mypy, pytest (+pytest-cov), GitHub Actions CI                          |
 
 All experiments are designed to run on a single consumer‑grade GPU. The full factorial sweep can be launched with a single command (see the *Reproducibility* section).
 
@@ -166,7 +119,7 @@ All experiments are designed to run on a single consumer‑grade GPU. The full f
 
 ## Project Status & Implementation Phases
 
-The project has reached **Phase 9 (Analysis and Paper-Ready Figures)** with full test coverage across modules.
+The project has reached **Phase 9 (Analysis and Aggregation)** with full test coverage across modules.
 
 | Phase | What gets built                                                  | Status         |
 | ----- | ---------------------------------------------------------------- | -------------- |
@@ -178,9 +131,8 @@ The project has reached **Phase 9 (Analysis and Paper-Ready Figures)** with full
 | 5     | Single‑agent baselines                                          | ✅ Completed   |
 | 6     | Shared broadcast channel & topologies (Ring, Broadcast)          | ✅ Completed   |
 | 7     | Poisoning condition & injection tracking                         | ✅ Completed   |
-| 8     | Full multi‑agent experiment runner & rehydrator                 | ✅ Completed   |
-| 9     | Analysis engine, quantitative aggregators & paper‑ready figures | ✅ Completed   |
-| 10    | Final paper writeup                                              | 🔄 In Progress |
+| 8     | Full multi‑agent experiment runner & rehydrator                  | ✅ Completed   |
+| 9     | Analysis engine, quantitative aggregators & figures              | ✅ Completed   |
 
 ---
 
@@ -189,14 +141,14 @@ The project has reached **Phase 9 (Analysis and Paper-Ready Figures)** with full
 The experiment can be reproduced by the following steps:
 
 1. **Clone the repository** (or download the zip).
-2. **Install dependencies** using either `conda` or `pip`:
+2. **Create and activate the conda environment** (`ml`):
 
    ```bash
-   conda env create -f environment.yml   # creates `seam` environment
-   conda activate seam
+   conda env create -f environment.yml   # creates the `ml` environment
+   conda activate ml
    ```
 
-   or
+   or use plain `pip`:
 
    ```bash
    python -m venv venv
@@ -207,22 +159,25 @@ The experiment can be reproduced by the following steps:
 3. **Download the model weights** via Ollama:
 
    ```bash
-   ollama pull qwen2.5:7b-instruct
+   ollama pull qwen2.5:7b
    ollama pull nomic-embed-text
    ```
-4. **Run the full sweep** (executes all factorial configurations and stores results under `runs/`):
+4. **Run the full sweep** (executes all factorial configurations and stores results under `runs/experiments/`):
 
    ```bash
-   python scripts/run_experiments.py --config configs/experiment.yaml
+   python scripts/run_experiments.py --env resource_foraging --model qwen2.5:7b --outdir runs/experiments
    ```
 5. **Generate figures** and analysis:
 
    ```bash
-   python scripts/generate_figures.py --output figures/
+   python scripts/generate_figures.py --indir runs/experiments --outdir figures
    ```
-6. **Run Test Suite**:
+6. **Run the quality gates** (lint, types, tests):
 
    ```bash
+   ruff check .
+   ruff format --check .
+   mypy src/
    pytest
    ```
 
@@ -230,16 +185,16 @@ A Dockerfile is also provided for a fully containerised setup (see `Dockerfile` 
 
 ```bash
 docker build -t seam .
-docker run --rm -v $(pwd):/workspace -w /workspace seam python scripts/run_experiments.py --config configs/experiment.yaml
+docker run --rm -v $(pwd):/workspace -w /workspace seam python scripts/run_experiments.py --env resource_foraging --model qwen2.5:7b --outdir runs/experiments
 ```
 
 ---
 
 ## Limitations
 
-- **Single‑model focus** – All results are obtained with `qwen2.5:7b-instruct`; generality to other architectures is untested.
+- **Single‑model focus** – All experiments use `qwen2.5:7b-instruct`; generality to other architectures is untested.
 - **Toy‑task scope** – The experiments use simplified grid‑world and game environments; real‑world LLM‑driven tasks may exhibit different dynamics.
-- **Deterministic decoding only** – We present results under `temperature=0`; stochastic decoding could alter collapse and contamination rates.
+- **Deterministic decoding only** – The main sweep is configured for `temperature=0`; stochastic decoding could alter collapse and contamination rates.
 - **Poisoning model simplicity** – The seeded “non‑transferable lesson” is a manually crafted rule; more realistic poisoning vectors (e.g., fine‑tuned data, adversarial prompts) are not explored.
 
 ---

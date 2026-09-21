@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 
@@ -234,18 +235,22 @@ def plot_poisoning_performance_comparison(
             jitter=0.12,
             ax=ax,
         )
-        sns.pointplot(
-            data=data,
-            x="poisoning_mode",
-            y="final_score",
-            hue=hue,
-            dodge=0.35 if hue is not None else 0,
-            errorbar=("ci", 95),
-            join=False,
-            markers="D",
-            color="black",
-            ax=ax,
-        )
+        point_kwargs: dict[str, Any] = {
+            "data": data,
+            "x": "poisoning_mode",
+            "y": "final_score",
+            "hue": hue,
+            "dodge": 0.35 if hue is not None else 0,
+            "errorbar": ("ci", 95),
+            "linestyle": "none",
+            "markers": "D",
+            "ax": ax,
+        }
+        if hue is not None:
+            point_kwargs["palette"] = "dark:black"
+        else:
+            point_kwargs["color"] = "black"
+        sns.pointplot(**point_kwargs)
         if hue is not None:
             handles, labels = ax.get_legend_handles_labels()
             unique = data[hue].nunique()
@@ -296,7 +301,7 @@ def plot_run_level_distributions(
     if not metrics or "policy" not in df.columns:
         _show_no_data(axes[0], "Run-Level Metric Distributions")
     else:
-        for ax, metric in zip(axes, metrics):
+        for ax, metric in zip(axes, metrics, strict=True):
             data = _usable_data(df, ["policy", metric], [metric])
             if data.empty:
                 _show_no_data(ax, metric.replace("_", " ").title())

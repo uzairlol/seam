@@ -83,7 +83,7 @@ class BargainingGame(BaseEnv):
         self._done = False
         self._accepted_deals = []
         agent_ids = [f"agent_{i}" for i in range(self._n_agents)]
-        self._scores = {aid: 0.0 for aid in agent_ids}
+        self._scores = dict.fromkeys(agent_ids, 0.0)
         logger.debug("BargainingGame reset (seed=%d, pie=%d)", seed, self._pie_size)
 
         # Pre-select the pair for round 1 so agents see their correct upcoming role.
@@ -128,7 +128,7 @@ class BargainingGame(BaseEnv):
 
         self._round += 1
         agent_ids = list(self._scores.keys())
-        rewards: dict[str, float] = {aid: 0.0 for aid in agent_ids}
+        rewards: dict[str, float] = dict.fromkeys(agent_ids, 0.0)
 
         # Use the pair pre-selected in the previous reset()/step() call.
         proposer_id = self._next_proposer
@@ -178,7 +178,7 @@ class BargainingGame(BaseEnv):
             # Episode over — roles no longer matter; use observer for all.
             self._next_proposer = agent_ids[0]
             self._next_responder = agent_ids[1]
-            next_role_map: dict[str, str] = {aid: "observer" for aid in agent_ids}
+            next_role_map: dict[str, str] = dict.fromkeys(agent_ids, "observer")
         else:
             # Pre-select roles for the NEXT round so observations are forward-looking.
             self._next_proposer, self._next_responder = self._sample_pair(agent_ids)

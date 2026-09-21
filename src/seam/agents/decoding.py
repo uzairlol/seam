@@ -103,7 +103,7 @@ class OllamaClient:
             OllamaClientError: If all retry attempts fail.
         """
         result, _ = self._retry_call(self._do_embed, text, {})
-        return result  # type: ignore[return-value]
+        return result
 
     def is_available(self) -> bool:
         """Check whether the Ollama server is reachable.
@@ -128,8 +128,8 @@ class OllamaClient:
             response = self._client.show(self._config.model_name)
             # ollama >=0.3 returns a ShowResponse object; convert to dict
             if hasattr(response, "model_dump"):
-                return response.model_dump()  # type: ignore[return-value]
-            return dict(response)  # type: ignore[call-overload]
+                return response.model_dump()
+            return dict(response)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not retrieve model info for %s: %s", self._config.model_name, exc)
             return {}
@@ -148,8 +148,8 @@ class OllamaClient:
             stream=False,
         )
         latency_ms = int((time.perf_counter() - start) * 1000)
-        assert response.response is not None, "Ollama generate returned no response text"  # type: ignore[union-attr]
-        response_text: str = response.response  # type: ignore[union-attr]
+        assert response.response is not None, "Ollama generate returned no response text"
+        response_text: str = response.response
         logger.info(
             "complete model=%s prompt_len=%d response_len=%d latency_ms=%d",
             self._config.model_name,
@@ -164,7 +164,7 @@ class OllamaClient:
         start = time.perf_counter()
         response = self._client.embeddings(model=self._config.model_name, prompt=text)
         latency_ms = int((time.perf_counter() - start) * 1000)
-        embedding: list[float] = list(response.embedding)  # type: ignore[union-attr]
+        embedding: list[float] = list(response.embedding)
         logger.info(
             "embed model=%s text_len=%d embedding_dim=%d latency_ms=%d",
             self._config.model_name,

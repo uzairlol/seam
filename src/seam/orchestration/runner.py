@@ -327,7 +327,7 @@ class EpisodeRunner:
                 for aid, acts in per_agent_actions.items()
             }
             if self.poison_injector.is_active
-            else {aid: 0.0 for aid in self.population.agent_ids}
+            else dict.fromkeys(self.population.agent_ids, 0.0)
         )
 
         # Propagation latency: rounds until peer agents first contaminated

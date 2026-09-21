@@ -36,7 +36,7 @@ class PoisonInjector:
         """Retrieve the payload string from file or default dictionary."""
         if self.config.poison_file:
             try:
-                with open(self.config.poison_file, "r", encoding="utf-8") as f:
+                with open(self.config.poison_file, encoding="utf-8") as f:
                     return f.read().strip()
             except OSError as exc:
                 logger.warning(

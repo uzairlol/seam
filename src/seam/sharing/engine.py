@@ -66,7 +66,7 @@ class MemorySharingEngine:
         Returns:
             Dict mapping ``{agent_id: n_messages_received}``.
         """
-        counts = {aid: 0 for aid in self.agent_ids}
+        counts = dict.fromkeys(self.agent_ids, 0)
         if not self.is_active:
             return counts
 
