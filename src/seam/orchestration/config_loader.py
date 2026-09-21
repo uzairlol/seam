@@ -30,6 +30,7 @@ class EnvConfig(BaseModel):
     n_agents: int = 6
     episode_length: int = 50
     resource_spawn_rate: float = 0.3
+    rich_cell_yield: int = 0  # non-replenishing rich stock at the centre cell (0 = disabled)
 
 
 class MemoryConfig(BaseModel):

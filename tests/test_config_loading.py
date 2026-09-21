@@ -21,6 +21,7 @@ SAMPLE_YAML = textwrap.dedent("""\
       n_agents: 6
       episode_length: 50
       resource_spawn_rate: 0.3
+      rich_cell_yield: 5
     model:
       model_name: "qwen2.5:7b-instruct"
       base_url: "http://localhost:11434"
@@ -69,6 +70,7 @@ def test_load_experiment_config_values(sample_yaml_path: Path) -> None:
     assert cfg.experiment_id == "test_exp_001"
     assert cfg.env.grid_size == 10
     assert cfg.env.n_agents == 6
+    assert cfg.env.rich_cell_yield == 5
     assert cfg.model.model_name == "qwen2.5:7b-instruct"
     assert cfg.model.seed == 42
     assert cfg.memory.policy == "naive_overwrite"
@@ -83,6 +85,14 @@ def test_load_experiment_config_defaults(sample_yaml_path: Path) -> None:
     assert cfg.model.temperature == 0.0
     assert cfg.model.top_p == 1.0
     assert cfg.memory.window_size == 10
+
+
+def test_env_config_defaults() -> None:
+    """rich_cell_yield defaults to 0 (nonstationarity disabled) when not supplied."""
+    from seam.orchestration.config_loader import EnvConfig
+
+    cfg = EnvConfig(type="resource_foraging")
+    assert cfg.rich_cell_yield == 0
 
 
 def test_load_experiment_config_missing_file() -> None:

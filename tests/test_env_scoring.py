@@ -276,3 +276,47 @@ def test_number_guessing_game_mechanics() -> None:
 
     score = env.get_ground_truth_score()
     assert score == 0.5  # solved in 2 rounds -> 1/2 = 0.5
+
+
+# ---------------------------------------------------------------------------
+# Nonstationarity — rich cell stock
+# ---------------------------------------------------------------------------
+
+
+def test_rich_cell_is_seeded_at_centre_when_enabled() -> None:
+    """rich_cell_yield > 0 deposits a stock at the exact centre cell."""
+    env = ResourceForagingGame(grid_size=10, n_agents=2, episode_length=5, rich_cell_yield=7)
+    env.reset(seed=0)
+    centre = (5, 5)
+    assert env._grid[centre] >= 7
+    assert centre in env._rich_cells
+
+
+def test_rich_cell_collapses_and_never_respawns() -> None:
+    """Exhausting the rich cell zeroes it and the spawn loop must skip it forever."""
+    env = ResourceForagingGame(
+        grid_size=10, n_agents=1, episode_length=20, resource_spawn_rate=0.9, rich_cell_yield=2
+    )
+    env.reset(seed=1)
+    centre = (5, 5)
+    env._positions = {"agent_0": [5, 5]}
+    env._grid[:] = 0
+    env._grid[centre] = 2
+
+    # Drain the rich stock with two harvests.
+    env.step({"agent_0": "harvest"})
+    env.step({"agent_0": "harvest"})
+    assert env._grid[centre] == 0
+    assert centre in env._spent_rich_cells
+
+    # Run several spawn-heavy rounds; the exhausted rich cell must stay empty.
+    for _ in range(10):
+        env.step({"agent_0": "stay"})
+    assert env._grid[centre] == 0
+
+
+def test_no_rich_cell_by_default() -> None:
+    """Default rich_cell_yield=0 means no centre-cell stock is forced."""
+    env = ResourceForagingGame(grid_size=10, n_agents=2, episode_length=2)
+    env.reset(seed=0)
+    assert "_rich_cells" not in env.__dict__ or env._rich_cells == set()

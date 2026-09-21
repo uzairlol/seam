@@ -317,3 +317,34 @@ def plot_run_level_distributions(
             ax.tick_params(axis="x", rotation=25)
     fig.suptitle("Run-Level Metric Distributions")
     return _finish_figure(fig, out_path)
+
+
+def plot_survival_curves(
+    df: pd.DataFrame,
+    output_file: str | Path = "figures/survival_curves.png",
+) -> Path:
+    """Plot time-to-infection survival curves for each condition.
+
+    Args:
+        df: Long survival-curve frame from :func:`seam.analysis.survival.compute_survival_curves`.
+        output_file: Target PNG file path.
+
+    Returns:
+        Path object pointing to saved figure.
+    """
+    required = ["round", "survival_prob"]
+    out_path, fig, ax = _start_figure(output_file, (8, 5))
+    data = _usable_data(df, required, [])
+    if data.empty:
+        _show_no_data(ax, "Peer Contamination Survival Curves")
+    else:
+        hue = next((c for c in ("poisoning_mode", "policy", "topology") if c in data.columns), None)
+        kwargs: dict[str, Any] = {"data": data, "x": "round", "y": "survival_prob", "ax": ax}
+        if hue is not None:
+            kwargs["hue"] = hue
+        sns.lineplot(**kwargs)
+        ax.set_title("Peer Cleanliness Survival: fraction not yet contaminated")
+        ax.set_xlabel("Round")
+        ax.set_ylabel("Survival Probability (not infected)")
+        ax.set_ylim(0, 1.02)
+    return _finish_figure(fig, out_path)

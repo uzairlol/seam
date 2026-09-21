@@ -139,11 +139,15 @@ One agent is seeded with an explicit, reward‑contradicting fixed-action direct
 - Poison presence fraction (share of non‑seed agents whose memory contains a boundary‑matched payload phrase at any point)
 - Time‑to‑propagation (first round an agent exceeds the contamination threshold; recorded in each run's `summary.json` and aggregated under `propagation_latency`)
 - Poison spread fraction at round T (`peer_contamination_rate`)
+- Poison dosage (`poison_dosage_rate`) — the fraction of a peer's memory text attributable to the payload (peak over rounds), distinguishing full payload takeover from single‑phrase echoes
+- Time‑to‑infection survival curves (per‑condition Kaplan–Meier estimates of how fast peers become contaminated)
 
 **Performance metrics:**
 
 - Cumulative reward per agent per run
 - Inter‑agent reward variance
+- Oracle reference score per run (`oracle_score`) — deterministic optimal rollout on the same (env, seed) instance
+- Efficacy gap — `(score − no_memory_baseline) / (oracle − no_memory_baseline)`, normalized per seed and comparable across environments
 
 > Attribution metrics — e.g., "did the contaminated lesson *cause* the performance loss, and for whom" — and per‑round regret vs. an optimal policy are **not** implemented. They are read-outs for future work once a full factorial dataset exists.
 
@@ -276,8 +280,8 @@ docker run --rm -v $(pwd):/workspace -w /workspace seam python scripts/run_exper
 
 - **Single‑model focus** – All experiments use `qwen2.5:7b-instruct`; generality to other architectures is untested.
 - **Toy‑task scope** – The experiments use simplified grid‑world and game environments; real‑world LLM‑driven tasks may exhibit different dynamics.
-- **Deterministic decoding only** – The main sweep is configured for `temperature=0`; stochastic decoding could alter collapse and contamination rates.
-- **Poisoning model simplicity** – The seeded poison is an explicit, reward‑contradicting fixed-action directive; more realistic or covert poisoning vectors (e.g., fine‑tuned data, adversarial prompts, subtle "locally correct" lessons) are not explored.
+- **Deterministic decoding by default** – The main sweep is configured for `temperature=0`; `scripts/run_experiments.py --trials N --sample-temperature T` runs N decoding replicates per (condition, seed) when stochastic sampling should be probed.
+- **Poisoning model simplicity** – The seeded poison is an explicit, reward‑contradicting fixed-action directive; more realistic or covert poisoning vectors (e.g., fine‑tuned data, adversarial prompts, subtle "locally correct" lessons) are not explored. The foraging environment now supports a nonstationary **rich cell** (`EnvConfig.rich_cell_yield`) whose stock collapses after harvest, so "locally correct" lessons can be staged; the main sweep keeps it off.
 
 ---
 

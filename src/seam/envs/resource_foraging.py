@@ -37,6 +37,10 @@ class ResourceForagingGame(BaseEnv):
         resource_spawn_rate: Per-empty-cell spawn probability (default 0.3).
         n_resources_initial: Resources placed at episode start (default 20).
         max_resources_per_cell: Hard cap per cell (default 3).
+        rich_cell_yield: When > 0, seed the centre cell with this many units of
+            a non-replenishing stock.  Harvest it fully and it collapses to
+            zero and never respawns — modelling a locally optimal strategy that
+            pays off early but is not transferable later (default 0 = disabled).
     """
 
     def __init__(
@@ -47,6 +51,7 @@ class ResourceForagingGame(BaseEnv):
         resource_spawn_rate: float = 0.3,
         n_resources_initial: int = 20,
         max_resources_per_cell: int = 3,
+        rich_cell_yield: int = 0,
     ) -> None:
         self._grid_size = grid_size
         self._n_agents = n_agents
@@ -54,6 +59,7 @@ class ResourceForagingGame(BaseEnv):
         self._resource_spawn_rate = resource_spawn_rate
         self._n_resources_initial = n_resources_initial
         self._max_resources_per_cell = max_resources_per_cell
+        self._rich_cell_yield = max(0, int(rich_cell_yield))
 
         # State (initialised in reset())
         self._rng: np.random.Generator = np.random.default_rng()
@@ -62,6 +68,8 @@ class ResourceForagingGame(BaseEnv):
         self._scores: dict[str, int] = {}
         self._round: int = 0
         self._done: bool = False
+        # Rich cells that have been exhausted and must never respawn
+        self._spent_rich_cells: set[tuple[int, int]] = set()
 
         # Tracking for ground-truth score
         self._total_spawned: int = 0
@@ -94,6 +102,8 @@ class ResourceForagingGame(BaseEnv):
         self._done = False
         self._total_spawned = 0
         self._total_harvested = 0
+        self._spent_rich_cells = set()
+        self._rich_cells: set[tuple[int, int]] = set()
 
         # Place initial resources
         flat_indices = self._rng.choice(
@@ -105,6 +115,14 @@ class ResourceForagingGame(BaseEnv):
             r, c = divmod(int(idx), self._grid_size)
             self._grid[r, c] = min(self._grid[r, c] + 1, self._max_resources_per_cell)
         self._total_spawned += int(self._grid.sum())
+
+        # Seed the centre cell with a non-replenishing rich stock (nonstationarity)
+        if self._rich_cell_yield > 0:
+            rich_r = self._grid_size // 2
+            rich_c = self._grid_size // 2
+            self._grid[rich_r, rich_c] += self._rich_cell_yield
+            self._total_spawned += self._rich_cell_yield
+            self._rich_cells.add((rich_r, rich_c))
 
         # Place agents at random distinct starting positions
         agent_ids = [f"agent_{i}" for i in range(self._n_agents)]
@@ -188,6 +206,8 @@ class ResourceForagingGame(BaseEnv):
                 rewards[harvester] = 1.0
                 self._scores[harvester] += 1
                 self._total_harvested += 1
+                if (r, c) in self._rich_cells and self._grid[r, c] == 0:
+                    self._spent_rich_cells.add((r, c))
             elif self._grid[r, c] > 0 and len(harvesters) > 1:
                 # Multiple agents tried to harvest same cell → none succeed
                 pass
@@ -196,6 +216,8 @@ class ResourceForagingGame(BaseEnv):
         spawned_this_round = 0
         for r in range(self._grid_size):
             for c in range(self._grid_size):
+                if (r, c) in self._spent_rich_cells:
+                    continue
                 if self._grid[r, c] == 0 and self._rng.random() < self._resource_spawn_rate:
                     self._grid[r, c] = 1
                     spawned_this_round += 1

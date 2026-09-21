@@ -10,6 +10,7 @@ from typing import Any, Self
 
 from seam.agents.decoding import OllamaClient
 from seam.agents.population import AgentPopulation
+from seam.analysis.oracle import oracle_rollout
 from seam.envs.bargaining_game import BargainingGame
 from seam.envs.number_guessing import NumberGuessingGame
 from seam.envs.resource_foraging import ResourceForagingGame
@@ -23,6 +24,7 @@ from seam.metrics.collapse import (
 )
 from seam.metrics.contamination import (
     compute_contamination_rate,
+    compute_peak_poison_dosage_per_agent,
     compute_poison_adherence,
     detect_poison_phrases,
 )
@@ -65,6 +67,7 @@ class EpisodeRunner:
                 grid_size=config.env.grid_size,
                 episode_length=config.env.episode_length,
                 resource_spawn_rate=config.env.resource_spawn_rate,
+                rich_cell_yield=config.env.rich_cell_yield,
             )
         elif env_type == "bargaining_game":
             self.env = BargainingGame(
@@ -334,11 +337,31 @@ class EpisodeRunner:
         latencies = [r for r in peer_propagation_round.values() if r is not None]
         mean_propagation_latency = float(sum(latencies) / len(latencies)) if latencies else None
 
+        # Poison dosage: peak fraction of each peer's memory attributable to the payload.
+        # Distinguishes weak echo contamination from full payload takeover.
+        per_agent_poison_dosage = compute_peak_poison_dosage_per_agent(
+            per_agent_memories, poison_keywords
+        )
+        peer_dosages = [
+            dosage
+            for aid, dosage in per_agent_poison_dosage.items()
+            if aid != self.config.poisoning.poison_agent_id
+        ]
+        poison_dosage_rate = (
+            float(sum(peer_dosages) / len(peer_dosages))
+            if self.poison_injector.is_active and self.sharing_engine.is_active and peer_dosages
+            else 0.0
+        )
+
+        # Oracle reference: deterministic optimal score on the same (env_type, seed) instance.
+        oracle_score = oracle_rollout(self.config.env.type, self.env, self.seed)
+
         summary = {
             "run_id": self.logger_inst.run_id,
             "seed": self.seed,
             "rounds_played": round_num,
             "final_score": ground_truth_score,
+            "oracle_score": oracle_score,
             "cumulative_rewards": cumulative_rewards,
             "mean_self_bleu": sum(per_agent_self_bleu.values()) / len(per_agent_self_bleu),
             "per_agent_self_bleu": per_agent_self_bleu,
@@ -346,6 +369,8 @@ class EpisodeRunner:
             "per_agent_memory_lengths": per_agent_memory_lengths,
             "peer_contamination_rate": peer_contamination_rate,
             "per_agent_poison_adherence": per_agent_poison_adherence,
+            "per_agent_poison_dosage": per_agent_poison_dosage,
+            "poison_dosage_rate": poison_dosage_rate,
             "propagation_latency": mean_propagation_latency,
             "peer_propagation_round": peer_propagation_round,
         }

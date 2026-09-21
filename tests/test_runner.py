@@ -42,3 +42,39 @@ def test_episode_runner_execution_and_summary(tmp_path: Path) -> None:
     assert len(summary["cumulative_rewards"]) == 2
     assert (tmp_path / summary["run_id"] / "events.jsonl").exists()
     assert (tmp_path / summary["run_id"] / "summary.json").exists()
+
+
+def test_episode_runner_emits_oracle_and_dosage_fields(tmp_path: Path) -> None:
+    """Oracle reference, poison dosage, and survival inputs are all recorded."""
+    cfg = ExperimentConfig(
+        experiment_id="test_runner_oracle",
+        description="oracle + dosage unit test",
+        env=EnvConfig(type="resource_foraging", n_agents=2, episode_length=5),
+        model=ModelConfig(model_name="qwen2.5:7b-instruct", base_url="http://localhost:11434"),
+        memory=MemoryConfig(policy="naive_overwrite"),
+        sharing=SharingConfig(mode="off"),
+        poisoning=PoisoningConfig(mode="internal", poison_agent_id="agent_0"),
+        seeds=[7],
+    )
+
+    mock_client = MagicMock()
+    mock_client.complete.return_value = ("Action: harvest", 20)
+
+    runner = EpisodeRunner(config=cfg, seed=7, client=mock_client, base_dir=tmp_path)
+    summary = runner.run()
+
+    assert "oracle_score" in summary
+    assert 0.0 <= summary["oracle_score"] <= 1.0
+    assert "poison_dosage_rate" in summary
+    assert "per_agent_poison_dosage" in summary
+    assert len(summary["per_agent_poison_dosage"]) == 2
+    # poisoning active but sharing off -> dosage gated to 0.0
+    assert summary["poison_dosage_rate"] == 0.0
+    assert "peer_propagation_round" in summary
+
+    loaded = tmp_path / summary["run_id"] / "summary.json"
+    with open(loaded, encoding="utf-8") as fh:
+        import json
+
+        saved = json.load(fh)
+    assert saved["summary_info"]["oracle_score"] == summary["oracle_score"]

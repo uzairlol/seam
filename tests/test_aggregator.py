@@ -197,3 +197,59 @@ def test_aggregator_uses_csv_when_complete():
         agg = ResultAggregator(tmp_path)
         assert len(agg.df) == 2
         assert "run_42" in set(agg.df["run_id"])
+
+
+def test_aggregator_derives_efficacy_gap_from_oracle_scores():
+    """Scan-based data with oracle_score + a no_memory baseline yields efficacy_gap."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        for run_id, policy, topo, score in (
+            ("ctl_42", "no_memory", "off", 0.1),
+            ("treated_42", "naive_overwrite", "ring", 0.3),
+        ):
+            run_dir = tmp_path / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": run_id,
+                        "experiment_id": "exp_t",
+                        "seed": 42,
+                        "memory_policy": policy,
+                        "sharing_mode": "broadcast",
+                        "topology": topo,
+                        "poisoning_mode": "internal",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": run_id,
+                        "final_score": score,
+                        "summary_info": {
+                            "mean_self_bleu": 0.9,
+                            "peer_contamination_rate": 0.5,
+                            "propagation_latency": 2.0,
+                            "oracle_score": 0.5,
+                            "poison_dosage_rate": 0.3,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        agg = ResultAggregator(tmp_path)
+        assert "oracle_score" in agg.df.columns
+        assert "poison_dosage_rate" in agg.df.columns
+        assert "efficacy_gap" in agg.df.columns
+        # efficacy = (0.3 - 0.1) / (0.5 - 0.1) = 0.5 for the treated run
+        treated = agg.df[agg.df["run_id"] == "treated_42"]
+        assert pytest.approx(treated.iloc[0]["efficacy_gap"]) == 0.5
+
+        summary_df = agg.aggregate_conditions()
+        assert "efficacy_gap_mean" in summary_df.columns
+        md = agg.to_markdown_table()
+        assert "Efficacy Gap" in md
+        assert "Oracle Score" in md

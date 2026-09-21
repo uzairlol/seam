@@ -79,6 +79,8 @@ def run_experiments(
     seeds: list[int] | None = None,
     output_dir: str = "runs/experiments",
     resume: bool = True,
+    trials: int = 1,
+    sample_temperature: float = 0.6,
 ) -> list[dict[str, Any]]:
     """Execute multi-agent experiments across all requested grid conditions.
 
@@ -91,6 +93,11 @@ def run_experiments(
         seeds: List of random seeds.
         output_dir: Output base folder.
         resume: If True, skip runs that already have a summary.json.
+        trials: Number of decoding replicates per (condition, seed).  With a
+            single trial the model temperature stays 0.0 (greedy); with more
+            than one, ``sample_temperature`` is used and each trial gets a
+            distinct decoding seed so the samples differ.
+        sample_temperature: Sampling temperature for multi-trial replicates.
 
     Returns:
         List of summary result dictionaries.
@@ -116,7 +123,13 @@ def run_experiments(
 
     logger.info("==========================================")
     logger.info("Starting Phase 8 Experiment Grid Execution")
-    logger.info("Total Conditions: %d (env=%s, model=%s)", len(grid), env_type, model_name)
+    logger.info(
+        "Total Conditions: %d (env=%s, model=%s, trials=%d)",
+        len(grid),
+        env_type,
+        model_name,
+        trials,
+    )
     logger.info("==========================================")
 
     results: list[dict[str, Any]] = []
@@ -134,36 +147,44 @@ def run_experiments(
             cond["poisoning_mode"],
         )
 
-        cfg = ExperimentConfig(
-            experiment_id=exp_id,
-            description=f"Phase 8 multi-agent experiment run for {exp_id}",
-            env=EnvConfig(type=env_type, n_agents=6, episode_length=50),
-            model=ModelConfig(model_name=model_name, base_url="http://localhost:11434"),
-            memory=MemoryConfig(policy=cond["policy"]),
-            sharing=SharingConfig(
-                mode=cond["sharing_mode"],
-                topology=cond["topology"],
-                publish_every_n_rounds=2,
-            ),
-            poisoning=PoisoningConfig(
-                mode=cond["poisoning_mode"],
-                poison_agent_id="agent_0",
-            ),
-            seeds=[cond["seed"]],
-        )
+        for trial in range(max(1, trials)):
+            trial_exp_id = f"{exp_id}_t{trial}" if trials > 1 else exp_id
+            cfg = ExperimentConfig(
+                experiment_id=trial_exp_id,
+                description=f"Phase 8 multi-agent experiment run for {trial_exp_id}",
+                env=EnvConfig(type=env_type, n_agents=6, episode_length=50),
+                model=ModelConfig(
+                    model_name=model_name,
+                    base_url="http://localhost:11434",
+                    temperature=0.0 if trials <= 1 else sample_temperature,
+                    seed=(cond["seed"] * 1000 + trial) if trials > 1 else None,
+                ),
+                memory=MemoryConfig(policy=cond["policy"]),
+                sharing=SharingConfig(
+                    mode=cond["sharing_mode"],
+                    topology=cond["topology"],
+                    publish_every_n_rounds=2,
+                ),
+                poisoning=PoisoningConfig(
+                    mode=cond["poisoning_mode"],
+                    poison_agent_id="agent_0",
+                ),
+                seeds=[cond["seed"]],
+            )
 
-        # Execute using EpisodeRunner context manager for strict memory safety
-        with EpisodeRunner(config=cfg, seed=cond["seed"], base_dir=out_path) as runner:
-            summary = runner.run()
+            # Execute using EpisodeRunner context manager for strict memory safety
+            with EpisodeRunner(config=cfg, seed=cond["seed"], base_dir=out_path) as runner:
+                summary = runner.run()
 
-        del runner
-        gc.collect()
+            del runner
+            gc.collect()
 
-        summary["experiment_id"] = exp_id
-        summary["policy"] = cond["policy"]
-        summary["topology"] = cond["topology"]
-        summary["poisoning_mode"] = cond["poisoning_mode"]
-        results.append(summary)
+            summary["experiment_id"] = trial_exp_id
+            summary["policy"] = cond["policy"]
+            summary["topology"] = cond["topology"]
+            summary["poisoning_mode"] = cond["poisoning_mode"]
+            summary["trial"] = trial
+            results.append(summary)
 
     # Export aggregated results summary CSV and manifest JSON
     _save_summary_manifest(results, out_path)
@@ -185,10 +206,13 @@ def _save_summary_manifest(results: list[dict[str, Any]], out_dir: Path) -> None
                 "topology": r.get("topology"),
                 "poisoning_mode": r.get("poisoning_mode"),
                 "seed": r.get("seed"),
+                "trial": r.get("trial", 0),
                 "rounds_played": r.get("rounds_played"),
                 "final_score": r.get("final_score"),
+                "oracle_score": r.get("oracle_score"),
                 "mean_self_bleu": r.get("mean_self_bleu"),
                 "peer_contamination_rate": r.get("peer_contamination_rate", 0.0),
+                "poison_dosage_rate": r.get("poison_dosage_rate", 0.0),
                 "propagation_latency": r.get("propagation_latency"),
             }
         )
@@ -238,6 +262,15 @@ def main() -> None:
         help="Random seeds",
     )
     parser.add_argument("--outdir", type=str, default="runs/experiments", help="Output directory")
+    parser.add_argument(
+        "--trials", type=int, default=1, help="Decoding replicates per (condition, seed)"
+    )
+    parser.add_argument(
+        "--sample-temperature",
+        type=float,
+        default=0.6,
+        help="Sampling temperature used when --trials > 1",
+    )
     args = parser.parse_args()
 
     run_experiments(
@@ -248,6 +281,8 @@ def main() -> None:
         poisoning_modes=args.poisoning,
         seeds=args.seeds,
         output_dir=args.outdir,
+        trials=args.trials,
+        sample_temperature=args.sample_temperature,
     )
 
 

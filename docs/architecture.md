@@ -65,7 +65,7 @@ The environment receives a dictionary of parsed actions, updates its state, and 
 
 - `EpisodeRunner` accepts one seed; `ExperimentConfig.seeds` is metadata/default input, while scripts iterate seeds externally.
 - The runner's event `raw_response` field currently receives the parsed action rather than the untouched model response.
-- Some metrics described in project-scope documents remain unimplemented (e.g., per-round regret); first-arrival propagation latency is emitted per run under `summary_info.propagation_latency` and aggregated by the aggregator, but no preserved run record contains it yet.
+- Some metrics described in project-scope documents remain unimplemented (e.g., per-round regret and semantic poison similarity). First-arrival propagation latency is emitted per run under `summary_info.propagation_latency` and aggregated by the aggregator; `oracle_score`, `poison_dosage_rate`, and the derived seed-normalised `efficacy_gap` are likewise aggregated when present.
 
 ## Prompt and response path
 

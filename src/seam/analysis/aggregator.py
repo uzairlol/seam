@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from seam.analysis.efficacy import compute_efficacy_gap
 from seam.logging.rehydrator import RunRehydrator
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class ResultAggregator:
 
     def __init__(self, runs_dir: str | Path = "runs/experiments") -> None:
         self.runs_dir = Path(runs_dir)
-        self.df = self._load_data()
+        self.df = compute_efficacy_gap(self._load_data())
 
     def _load_data(self) -> pd.DataFrame:
         """Load experiment data into a pandas DataFrame.
@@ -91,8 +92,10 @@ class ResultAggregator:
                         "poisoning_mode": meta.get("poisoning_mode"),
                         "seed": meta.get("seed"),
                         "final_score": summary.get("final_score", 0.0),
+                        "oracle_score": summary_info.get("oracle_score"),
                         "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
                         "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
+                        "poison_dosage_rate": summary_info.get("poison_dosage_rate", 0.0),
                         "propagation_latency": summary_info.get("propagation_latency"),
                     }
                 )
@@ -118,6 +121,9 @@ class ResultAggregator:
 
         metrics = ["final_score", "mean_self_bleu", "peer_contamination_rate"]
         target_metrics = [m for m in metrics if m in self.df.columns]
+        for optional in ("poison_dosage_rate", "oracle_score", "efficacy_gap"):
+            if optional in self.df.columns:
+                target_metrics.append(optional)
 
         agg_dict: dict[str, list[str]] = {m: ["mean", "std", "count"] for m in target_metrics}
         grouped = self.df.groupby(group_cols).agg(agg_dict)
@@ -155,8 +161,18 @@ class ResultAggregator:
                     critical_values = stats.t.ppf(0.975, dfree)
                     ci_half_width.loc[valid_mask] = critical_values * sem[valid_mask]
 
-                grouped[f"{m}_ci_low"] = np.clip(mean - ci_half_width, 0.0, 1.0)
-                grouped[f"{m}_ci_high"] = np.clip(mean + ci_half_width, 0.0, 1.0)
+                if m in {
+                    "final_score",
+                    "mean_self_bleu",
+                    "peer_contamination_rate",
+                    "poison_dosage_rate",
+                    "oracle_score",
+                }:
+                    grouped[f"{m}_ci_low"] = np.clip(mean - ci_half_width, 0.0, 1.0)
+                    grouped[f"{m}_ci_high"] = np.clip(mean + ci_half_width, 0.0, 1.0)
+                else:
+                    grouped[f"{m}_ci_low"] = mean - ci_half_width
+                    grouped[f"{m}_ci_high"] = mean + ci_half_width
 
         return grouped
 
@@ -170,10 +186,23 @@ class ResultAggregator:
         if agg_df.empty:
             return "No data available."
 
-        lines = [
-            "| Policy | Topology | Poisoning | Score (Mean ± 95% CI) | Self-BLEU (Mean ± 95% CI) | Contamination Rate (Mean ± 95% CI) | Runs |",
-            "|---|---|---|---|---|---|---|",
+        has_oracle = "oracle_score_mean" in agg_df.columns
+        has_efficacy = "efficacy_gap_mean" in agg_df.columns
+
+        header = [
+            "Policy",
+            "Topology",
+            "Poisoning",
+            "Score (Mean ± 95% CI)",
+            "Self-BLEU (Mean ± 95% CI)",
+            "Contamination Rate (Mean ± 95% CI)",
+            "Runs",
         ]
+        if has_oracle:
+            header.append("Oracle Score (Mean ± 95% CI)")
+        if has_efficacy:
+            header.append("Efficacy Gap (Mean ± 95% CI)")
+        lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
 
         for _, row in agg_df.iterrows():
             pol = row.get("policy", "N/A")
@@ -197,8 +226,18 @@ class ResultAggregator:
 
             cont_str = f"{cont_m:.2%} [{cont_lo:.2%}, {cont_hi:.2%}]"
 
-            lines.append(
-                f"| {pol} | {top} | {poi} | {score_str} | {bleu_str} | {cont_str} | {n_runs} |"
-            )
+            row_parts = [pol, top, poi, score_str, bleu_str, cont_str, str(n_runs)]
+            if has_oracle:
+                oracle_m = row.get("oracle_score_mean", 0.0)
+                oracle_lo = row.get("oracle_score_ci_low", oracle_m)
+                oracle_hi = row.get("oracle_score_ci_high", oracle_m)
+                row_parts.append(f"{oracle_m:.4f} [{oracle_lo:.4f}, {oracle_hi:.4f}]")
+            if has_efficacy:
+                eff_m = row.get("efficacy_gap_mean", 0.0)
+                eff_lo = row.get("efficacy_gap_ci_low", eff_m)
+                eff_hi = row.get("efficacy_gap_ci_high", eff_m)
+                row_parts.append(f"{eff_m:.3f} [{eff_lo:.3f}, {eff_hi:.3f}]")
+
+            lines.append("| " + " | ".join(row_parts) + " |")
 
         return "\n".join(lines)
