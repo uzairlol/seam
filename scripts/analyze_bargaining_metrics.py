@@ -28,8 +28,8 @@ def analyze_bargaining_runs() -> dict[str, Any]:
         with open(summary_file, encoding="utf-8") as f:
             summary_data = json.load(f)
 
-        # Example: exp_naive_overwrite_off_clean_seed40_...
-        # Let's inspect events
+        # Run folders are named such as exp_<policy>_<topology>_<poisoning>_seed<N>_<timestamp>.
+        # Inspect events to derive acceptance, welfare, and proposer-share statistics.
         total_rounds = 0
         accepted_deals = 0
         total_proposer_shares = []
