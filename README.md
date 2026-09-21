@@ -2,6 +2,11 @@
 
 > *Does sharing memory help or hurt self-evolving LLM agents? A controlled multi-agent study of collapse and contamination.*
 
+[![CI](https://img.shields.io/github/actions/workflow/status/uzairlol/seam/ci.yml?branch=master&label=CI)](https://github.com/uzairlol/seam/actions)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Test coverage](https://img.shields.io/badge/coverage-86%25-brightgreen)](tests/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
 ---
 
 ## Abstract
@@ -41,6 +46,52 @@ This sits at the intersection of two open gaps in the 2025–2026 literature:
 ---
 
 ## System Architecture & Features
+
+### Component graph
+
+```mermaid
+flowchart TD
+    CLI[Experiment or baseline CLI] --> CFG[ExperimentConfig]
+    CFG --> RUN[EpisodeRunner]
+    RUN --> ENV[Task environment]
+    RUN --> POP[AgentPopulation]
+    POP --> AG[BaseAgent]
+    AG --> LLM[OllamaClient]
+    RUN --> MEM[Memory policies]
+    RUN --> SHARE[MemorySharingEngine]
+    SHARE --> TOPO[TopologyGenerator]
+    RUN --> POISON[PoisonInjector]
+    RUN --> LOG[RunLogger]
+    LOG --> ART[Run artifacts]
+    ART --> AGG[ResultAggregator]
+    AGG --> PLOT[Plots and Markdown tables]
+```
+
+### One round, in pictures
+
+```mermaid
+sequenceDiagram
+    participant Runner
+    participant Poison
+    participant Sharing
+    participant Agents
+    participant Env
+    participant Logger
+
+    Poison->>Runner: seed internal memory (if configured)
+    loop each round
+        Poison->>Sharing: inject channel/gradual poison (if configured)
+        Runner->>Sharing: route published memory artifacts
+        Sharing->>Agents: deliver peer snippets by topology
+        Runner->>Agents: assemble prompt (local + shared context)
+        Agents->>Agents: query Ollama, parse action
+        Runner->>Env: step with all actions
+        Env-->>Runner: observations, rewards, done
+        Runner->>Agents: update local memory with experience
+        Runner->>Logger: log prompt, action, reward, memory
+    end
+    Runner->>Logger: write summary.json + roll up to results_summary.csv
+```
 
 ### Environments
 
@@ -114,6 +165,37 @@ One agent is seeded with an explicit, reward‑contradicting fixed-action direct
 | Tooling                | ruff, mypy, pytest (+pytest-cov), GitHub Actions CI                          |
 
 All experiments are designed to run on a single consumer‑grade GPU. The full factorial sweep can be launched with a single command (see the *Reproducibility* section).
+
+---
+
+## Project layout
+
+```
+src/seam/         core package (agents, envs, memory, sharing, poisoning,
+                  orchestration, metrics, analysis, logging, utils)
+scripts/          entry points: run_experiments, run_baselines, generate_figures,
+                  run_significance_tests, extract_case_studies, analyze_bargaining_metrics
+configs/          YAML experiment configurations
+tests/            pytest unit & integration suite (no live LLM required)
+docs/             project documentation (see the Docs section below)
+reports/          manuscript (LaTeX + Markdown), statistical outputs, trace analyses
+runs/             per-run artifacts: metadata.json, config_snapshot.yaml,
+                  events.jsonl, summary.json  (gitignored; not committed)
+figures/          generated plots
+```
+
+## Documentation
+
+Read [docs/README.md](docs/README.md) for a guided entry point. Highlights:
+
+- [Project overview](docs/overview.md) — research problem, scope, repository map
+- [Architecture](docs/architecture.md) — components, data flow, runtime ownership
+- [Sharing & poisoning](docs/sharing-and-poisoning.md) — topologies, injection, contamination
+- [Metrics & statistics](docs/metrics-and-statistics.md) — implemented measures and aggregation
+- [Experiment lifecycle](docs/experiment-lifecycle.md) — exact order of operations in a run
+- [Outputs & reproducibility](docs/outputs-and-reproducibility.md) — commands and rerun checks
+- [Audit history](docs/audit-history.md) — known result risks and validation status
+- [Manuscript](reports/manuscript/) — `manuscript.md` and `main.tex` (TMLR / JAAMAS target)
 
 ---
 
@@ -195,7 +277,7 @@ docker run --rm -v $(pwd):/workspace -w /workspace seam python scripts/run_exper
 - **Single‑model focus** – All experiments use `qwen2.5:7b-instruct`; generality to other architectures is untested.
 - **Toy‑task scope** – The experiments use simplified grid‑world and game environments; real‑world LLM‑driven tasks may exhibit different dynamics.
 - **Deterministic decoding only** – The main sweep is configured for `temperature=0`; stochastic decoding could alter collapse and contamination rates.
-- **Poisoning model simplicity** – The seeded “non‑transferable lesson” is a manually crafted rule; more realistic poisoning vectors (e.g., fine‑tuned data, adversarial prompts) are not explored.
+- **Poisoning model simplicity** – The seeded poison is an explicit, reward‑contradicting fixed-action directive; more realistic or covert poisoning vectors (e.g., fine‑tuned data, adversarial prompts, subtle "locally correct" lessons) are not explored.
 
 ---
 
