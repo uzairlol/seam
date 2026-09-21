@@ -14,13 +14,28 @@ _HEADER_PATTERNS = [
     r"Observation:",
     r"Action Taken:",
     r"Reward Received:",
-    r"=== Shared Peer Memories ===",
+    r"Last Action:",
+    r"Reward:",
+    r"Step\s*\d+:",
+    r"Obs=",
+    r"->",
+    r"\bAction=",
+    r"\bReward=",
+    r"[|]",
+    r"^\s*[-*•]\s*",
 ]
-_HEADER_RE = re.compile("|".join(_HEADER_PATTERNS), re.IGNORECASE)
+_HEADER_RE = re.compile("|".join(_HEADER_PATTERNS), re.IGNORECASE | re.MULTILINE)
 
 
 def _clean_memory_text(text: str) -> str:
-    """Remove boilerplate section headers and structural labels prior to metric computation."""
+    """Remove boilerplate section headers, structural labels, and format tokens prior to metric computation.
+
+    The naive-overwrite and raw-trajectory memory formats embed static formatting
+    tokens (``Last Action:``, ``Step N:``, ``Obs=``, ``->``, ``|``) that are
+    identical across rounds. Leaving them in place inflates Self-BLEU regardless of
+    whether the *content* of the memory actually changed. Stripping them ensures the
+    metric reflects semantic/lexical change in the memory, not formatting overlap.
+    """
     cleaned = _HEADER_RE.sub("", text).strip()
     return " ".join(cleaned.split()) if cleaned else text.strip()
 
@@ -46,6 +61,10 @@ def compute_self_bleu(memory_sequence: list[str], max_n: int = 2) -> float:
     """Compute mean Self-BLEU score across a sequence of memory texts.
 
     Higher Self-BLEU indicates higher lexical repetition/collapse across rounds.
+
+    Static formatting boilerplate (``Last Action:``, ``Step N:``, ``Obs=``,
+    ``->``, ``|``) is stripped before scoring so the metric reflects underlying
+    content change rather than identical template text.
 
     Args:
         memory_sequence: List of memory text strings over successive rounds.

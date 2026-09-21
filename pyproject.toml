@@ -73,7 +73,7 @@ line-ending = "auto"
 # Mypy — static type checking
 # -----------------------------------------------------------------------------
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 files = ["src"]
 mypy_path = "src"
 exclude = [

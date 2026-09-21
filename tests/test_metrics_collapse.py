@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from seam.metrics.collapse import (
+    _clean_memory_text,
     compute_action_entropy,
     compute_cosine_similarity,
     compute_embedding_similarity,
@@ -42,6 +43,42 @@ def test_compute_self_bleu_strips_headers() -> None:
     ]
     score = compute_self_bleu(memories)
     assert score < 0.5
+
+
+def test_clean_memory_text_strips_formatting_boilerplate() -> None:
+    """Static formatting tokens from the naive-overwrite and raw-trajectory formats are removed."""
+    naive_mem = "Last Action: west | Reward: 0.0"
+    assert _clean_memory_text(naive_mem) == "west 0.0"
+
+    raw_mem = "Step 1: Obs={'round': 1} -> Action='west' -> Reward=0.00"
+    assert _clean_memory_text(raw_mem) == "{'round': 1} 'west' 0.00"
+
+    structured_mem = (
+        "=== Curated Playbook Rules ===\n- Rule #1: Action 'west' resulted in zero reward"
+    )
+    assert _clean_memory_text(structured_mem) == "Action 'west' resulted in zero reward"
+
+
+def test_compute_self_bleu_reports_content_change_not_boilerplate() -> None:
+    """Self-BLEU should reflect content change even when formatting templates are identical."""
+    memories = [
+        "Step 1: Obs={'my_position': [1, 1]} -> Action='west' -> Reward=0.00",
+        "Step 2: Obs={'my_position': [1, 0]} -> Action='north' -> Reward=1.00",
+        "Step 3: Obs={'my_position': [0, 0]} -> Action='harvest' -> Reward=1.00",
+    ]
+    score = compute_self_bleu(memories)
+    assert score < 0.5
+
+
+def test_compute_self_bleu_identical_after_cleaning() -> None:
+    """Near-identical content after boilerplate stripping still yields high Self-BLEU."""
+    memories = [
+        "Last Action: west | Reward: 0.0",
+        "Last Action: west | Reward: 0.0",
+        "Last Action: west | Reward: 0.0",
+    ]
+    score = compute_self_bleu(memories)
+    assert score >= 0.8
 
 
 def test_compute_cosine_similarity() -> None:

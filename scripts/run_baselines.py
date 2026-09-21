@@ -54,7 +54,11 @@ def run_baselines(
         cfg = ExperimentConfig(
             experiment_id=f"baseline_{policy}",
             description=f"Phase 5 single-agent baseline run for {policy}",
-            env=EnvConfig(type=env_type, n_agents=4, episode_length=20),
+            env=EnvConfig(
+                type=env_type,
+                n_agents=6,
+                episode_length=50,
+            ),
             model=ModelConfig(model_name=model_name, base_url="http://localhost:11434"),
             memory=MemoryConfig(policy=policy),
             sharing=SharingConfig(mode="off"),

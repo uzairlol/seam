@@ -44,7 +44,7 @@ The environment receives a dictionary of parsed actions, updates its state, and 
 
 ### Analysis boundary
 
-`ResultAggregator` first prefers `results_summary.csv`; only when that file is absent does it recursively rehydrate `summary.json` files. This matters when new run folders are added without regenerating the experiment-level CSV.
+`ResultAggregator` treats the run-directory scan as the ground truth for record counts: a cached `results_summary.csv` is used only when it describes at least as many completed runs as the scan finds. If new run folders are added without regenerating the experiment-level CSV, the stale CSV is ignored and the runs are rehydrated directly from their `summary.json` files.
 
 ## Episode data flow
 
@@ -65,7 +65,7 @@ The environment receives a dictionary of parsed actions, updates its state, and 
 
 - `EpisodeRunner` accepts one seed; `ExperimentConfig.seeds` is metadata/default input, while scripts iterate seeds externally.
 - The runner's event `raw_response` field currently receives the parsed action rather than the untouched model response.
-- Some metrics described in project-scope documents, such as propagation latency and regret, are not currently included in runner summaries.
+- Some metrics described in project-scope documents remain unimplemented (e.g., per-round regret); first-arrival propagation latency is emitted per run under `summary_info.propagation_latency` and aggregated by the aggregator, but no preserved run record contains it yet.
 
 ## Prompt and response path
 

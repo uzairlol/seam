@@ -40,7 +40,7 @@ The runner computes final objective score, cumulative rewards, Self-BLEU, action
 
 `scripts/generate_figures.py` loads `results_summary.csv` when present, otherwise scans run folders for `summary.json`. It groups data by policy, topology, and poisoning mode and writes three PNGs plus a CSV and Markdown table.
 
-Because CSV takes precedence, regenerate the experiment-level summary before plotting after adding new run folders. Otherwise, a stale CSV can omit valid later runs.
+Because the CSV is preferred only when it is at least as complete as the run-directory scan, a stale CSV (fewer rows than completed run folders) is ignored automatically and replaced by a fresh rehydration; still, regenerate the experiment-level summary after adding new run folders so the committed CSV stays valid for other tooling.
 
 ## Seed accounting
 

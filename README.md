@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Self‑evolving large language model (LLM) agents improve through iterative memory updates, yet unchecked updates often cause *memory collapse*—a rapid drift into repetitive, stale behaviours that can be quantified via high Self‑BLEU scores. Simultaneously, shared memory channels expose agents to *contamination*: non‑transferable lessons from a single agent can propagate and degrade the performance of an entire population. This project investigates the interplay of these phenomena in a multi‑agent setting where several independent agents collaboratively exchange compressed memory artifacts. We introduce three memory‑update mechanisms—naïve overwrite, raw trajectory buffering, and structured incremental updates—paired with three communication topologies (off, full broadcast, ring). Across three deterministic resource‑allocation tasks (resource foraging, bargaining, number guessing), we conduct a full factorial sweep (≈162 runs per seed, 5 seeds) and measure collapse (Self‑BLEU, embedding cosine, action entropy), contamination (poison spread latency and fraction), and performance (cumulative reward). The design isolates how memory‑policy design and network topology jointly govern stability and efficacy in multi‑agent self‑evolution, providing a controlled testbed for future memory‑augmented agent systems.
+Self‑evolving large language model (LLM) agents improve through iterative memory updates, yet unchecked updates often cause *memory collapse*—a rapid drift into repetitive, stale behaviours that can be quantified via high Self‑BLEU scores. Simultaneously, shared memory channels expose agents to *contamination*: non‑transferable lessons from a single agent can propagate and degrade the performance of an entire population. This project investigates the interplay of these phenomena in a multi‑agent setting where several independent agents collaboratively exchange compressed memory artifacts. We introduce three memory‑update mechanisms—naïve overwrite, raw trajectory buffering, and structured incremental updates—paired with three communication topologies (off, full broadcast, ring). Across three deterministic resource‑allocation tasks (resource foraging, bargaining, number guessing), we conduct a full factorial sweep (3 policies × 3 topologies × 2 poisoning conditions × 10 seeds × 3 environments = 540 runs) and measure collapse (Self‑BLEU, action entropy, memory length), contamination (poison spread fraction) and performance (cumulative reward). The design isolates how memory‑policy design and network topology jointly govern stability and efficacy in multi‑agent self‑evolution, providing a controlled testbed for future memory‑augmented agent systems.
 
 ---
 
@@ -23,7 +23,7 @@ This project fills that gap with a clean, controlled experiment:
 - **4–6 agents**, each running a small local LLM (Qwen2.5‑7B‑Instruct or Llama‑3.1‑8B‑Instruct via Ollama)
 - **3 memory mechanisms** compared side by side: naive overwrite, raw trajectory buffer, and structured incremental update (ACE‑style Generate→Reflect→Curate playbook)
 - **A shared broadcast channel & ring topology** through which agents periodically publish compressed memory artifacts and consume each other's
-- **A poisoning condition** where one agent is seeded with a plausible but non‑transferable lesson, and we track whether and how fast it spreads to the rest of the population
+- **A poisoning condition** where one agent is seeded with an explicit, reward‑contradicting fixed-action directive (e.g., "always guess 100"), and we track whether and how fast it spreads to the rest of the population
 
 The task environments have objective, deterministic scoring — so that "did this memory update help or hurt" is answerable from the environment's reward signal alone, without an LLM judge.
 
@@ -62,11 +62,11 @@ Three task environments with objective, deterministic scoring (no LLM judge need
 
 - Agents publish a compressed memory artifact every **N** rounds
 - **Topologies**: Off (isolated), Full Broadcast (all-to-all), and Ring topology
-- **Selective Consumption**: Filter by highest embedding similarity
+- **Selective Consumption**: truncate received artifacts to a fixed top‑k window of the routing order (no embedding‑based ranking is applied at consume time)
 
 ### Poisoning condition
 
-One agent is seeded with a plausible but non‑transferable lesson at round 0. We then measure:
+One agent is seeded with an explicit, reward‑contradicting fixed-action directive at round 0. We then measure:
 
 - Does the lesson persist in Agent 0's memory across rounds?
 - Does it appear in other agents' memories after the shared‑channel exchange?
@@ -78,23 +78,23 @@ One agent is seeded with a plausible but non‑transferable lesson at round 0.
 
 **Collapse metrics:**
 
-- Self‑BLEU between successive memory states (lexical repetition)
-- Embedding cosine similarity between successive memory states
+- Self‑BLEU between successive memory states (lexical repetition; static formatting tokens are stripped before scoring)
+- Embedding cosine similarity between successive memory states (available in the metrics module; not part of the automated sweep)
 - Action entropy over a rolling window (behavioural diversity)
 - Memory length trajectory (brevity bias proxy)
 
 **Contamination metrics:**
 
-- Poison presence score per agent per round (embedding similarity to the poison lesson)
-- Time‑to‑propagation (first round where another agent crosses the contamination threshold)
-- Propagation fraction (what share of agents are contaminated by round T)
-- Performance degradation attributable to the contaminated lesson
+- Poison presence fraction (share of non‑seed agents whose memory contains a boundary‑matched payload phrase at any point)
+- Time‑to‑propagation (first round an agent exceeds the contamination threshold; recorded in each run's `summary.json` and aggregated under `propagation_latency`)
+- Poison spread fraction at round T (`peer_contamination_rate`)
 
 **Performance metrics:**
 
 - Cumulative reward per agent per run
-- Per‑round regret vs. optimal policy
 - Inter‑agent reward variance
+
+> Attribution metrics — e.g., "did the contaminated lesson *cause* the performance loss, and for whom" — and per‑round regret vs. an optimal policy are **not** implemented. They are read-outs for future work once a full factorial dataset exists.
 
 ---
 

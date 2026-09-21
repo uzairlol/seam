@@ -10,6 +10,7 @@ from typing import Any
 
 from seam.orchestration.config_loader import ExperimentConfig
 from seam.utils.io import save_json, save_yaml
+from seam.utils.reproducibility import get_git_commit_hash
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class RunLogger:
             "experiment_id": self.config.experiment_id,
             "seed": self.seed,
             "timestamp": self.timestamp,
+            "git_commit": get_git_commit_hash(),
             "env_type": self.config.env.type,
             "n_agents": self.config.env.n_agents,
             "model_name": self.config.model.model_name,

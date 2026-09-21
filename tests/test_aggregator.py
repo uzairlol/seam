@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -9,6 +10,46 @@ import pandas as pd
 import pytest
 
 from seam.analysis.aggregator import ResultAggregator
+
+
+def _write_run_dir(
+    run_dir: Path,
+    run_id: str,
+    *,
+    policy: str,
+    topology: str,
+    poisoning_mode: str,
+    seed: int,
+    final_score: float,
+    mean_self_bleu: float,
+    contamination_rate: float,
+    propagation_latency: float | None,
+) -> None:
+    """Create a minimal run directory that RunRehydrator can load."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    metadata = {
+        "run_id": run_id,
+        "experiment_id": "exp_test",
+        "seed": seed,
+        "env_type": "resource_foraging",
+        "n_agents": 6,
+        "model_name": "qwen2.5:7b",
+        "memory_policy": policy,
+        "sharing_mode": "broadcast",
+        "topology": topology,
+        "poisoning_mode": poisoning_mode,
+    }
+    summary = {
+        "run_id": run_id,
+        "final_score": final_score,
+        "summary_info": {
+            "mean_self_bleu": mean_self_bleu,
+            "peer_contamination_rate": contamination_rate,
+            "propagation_latency": propagation_latency,
+        },
+    }
+    (run_dir / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
 
 
 def test_aggregator_with_csv():
@@ -54,3 +95,105 @@ def test_aggregator_with_csv():
         md_table = agg.to_markdown_table()
         assert "| naive_overwrite | ring | clean |" in md_table
         assert "95% CI" in md_table
+
+
+def test_aggregator_rehydrates_runs_with_propagation_latency():
+    """The directory scan extracts propagation_latency so latency hypotheses can run."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        run_dir = tmp_path / "exp_run_seed42_20260921"
+        _write_run_dir(
+            run_dir,
+            "exp_run_seed42_20260921",
+            policy="structured_incremental",
+            topology="ring",
+            poisoning_mode="internal",
+            seed=42,
+            final_score=0.12,
+            mean_self_bleu=0.99,
+            contamination_rate=1.0,
+            propagation_latency=3.0,
+        )
+
+        agg = ResultAggregator(tmp_path)
+        assert len(agg.df) == 1
+        row = agg.df.iloc[0]
+        assert row["policy"] == "structured_incremental"
+        assert row["propagation_latency"] == 3.0
+
+
+def test_aggregator_prefers_scan_when_csv_is_stale():
+    """A stale results_summary.csv (fewer rows than run directories) must be ignored."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        # Three completed run directories...
+        for seed in (42, 43, 44):
+            _write_run_dir(
+                tmp_path / f"run_{seed}",
+                f"run_{seed}",
+                policy="naive_overwrite",
+                topology="ring",
+                poisoning_mode="clean",
+                seed=seed,
+                final_score=0.5,
+                mean_self_bleu=0.95,
+                contamination_rate=0.0,
+                propagation_latency=None,
+            )
+        # ...but a CSV that only describes a single (older) run.
+        pd.DataFrame(
+            [
+                {
+                    "run_id": "old_run",
+                    "policy": "no_memory",
+                    "topology": "off",
+                    "poisoning_mode": "clean",
+                    "seed": 42,
+                    "final_score": 0.0,
+                    "mean_self_bleu": 0.0,
+                    "peer_contamination_rate": 0.0,
+                }
+            ]
+        ).to_csv(tmp_path / "results_summary.csv", index=False)
+
+        agg = ResultAggregator(tmp_path)
+        assert len(agg.df) == 3
+        assert set(agg.df["policy"].unique()) == {"naive_overwrite"}
+
+
+def test_aggregator_uses_csv_when_complete():
+    """A CSV that matches the completed run-directory count is kept as ground truth."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        for seed in (42, 43):
+            _write_run_dir(
+                tmp_path / f"run_{seed}",
+                f"run_{seed}",
+                policy="naive_overwrite",
+                topology="ring",
+                poisoning_mode="clean",
+                seed=seed,
+                final_score=0.5,
+                mean_self_bleu=0.95,
+                contamination_rate=0.0,
+                propagation_latency=None,
+            )
+        pd.DataFrame(
+            [
+                {
+                    "run_id": f"run_{seed}",
+                    "policy": "naive_overwrite",
+                    "topology": "ring",
+                    "poisoning_mode": "clean",
+                    "seed": seed,
+                    "final_score": 0.5,
+                    "mean_self_bleu": 0.95,
+                    "peer_contamination_rate": 0.0,
+                }
+                for seed in (42, 43)
+            ]
+        ).to_csv(tmp_path / "results_summary.csv", index=False)
+
+        agg = ResultAggregator(tmp_path)
+        assert len(agg.df) == 2
+        assert "run_42" in set(agg.df["run_id"])

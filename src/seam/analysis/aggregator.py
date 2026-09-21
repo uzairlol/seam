@@ -26,49 +26,80 @@ class ResultAggregator:
         self.df = self._load_data()
 
     def _load_data(self) -> pd.DataFrame:
-        """Load experiment data into a pandas DataFrame."""
+        """Load experiment data into a pandas DataFrame.
+
+        The directory scan is treated as the ground truth for record counts. A
+        cached ``results_summary.csv`` is used only when it is at least as
+        complete as the run directories it describes; if the scan finds more
+        completed ``summary.json`` files than the CSV has rows, the CSV is
+        stale and the freshly rehydrated records take precedence.
+        """
+        csv_df = self._load_summary_csv()
+        scan_df = self._scan_run_dirs()
+
+        if scan_df is None:
+            return csv_df if csv_df is not None else pd.DataFrame()
+
+        if csv_df is None or len(scan_df) > len(csv_df):
+            if csv_df is not None:
+                logger.warning(
+                    "results_summary.csv has %d rows but %d completed run directories "
+                    "were found — ignoring stale CSV and rehydrating from runs.",
+                    len(csv_df),
+                    len(scan_df),
+                )
+            return scan_df
+
+        return csv_df
+
+    def _load_summary_csv(self) -> pd.DataFrame | None:
+        """Read ``results_summary.csv`` if present and parseable."""
         summary_csv = self.runs_dir / "results_summary.csv"
-        if summary_csv.exists():
-            try:
-                return pd.read_csv(summary_csv)
-            except OSError as exc:
-                logger.warning("Could not read %s: %s — scanning subdirectories", summary_csv, exc)
+        if not summary_csv.exists():
+            return None
+        try:
+            return pd.read_csv(summary_csv)
+        except OSError as exc:
+            logger.warning("Could not read %s: %s", summary_csv, exc)
+            return None
 
-        # Fallback: scan subdirectories recursively for summary.json files
+    def _scan_run_dirs(self) -> pd.DataFrame | None:
+        """Recursively rehydrate ``summary.json`` files from run subdirectories."""
+        if not self.runs_dir.exists():
+            return None
+
         records = []
-        if self.runs_dir.exists():
-            for summary_json in self.runs_dir.rglob("summary.json"):
-                run_dir = summary_json.parent
-                try:
-                    rehydrator = RunRehydrator(run_dir)
-                    meta = rehydrator.load_metadata()
-                    summary = rehydrator.load_summary()
-                    summary_info = summary.get("summary_info", {})
+        for summary_json in self.runs_dir.rglob("summary.json"):
+            run_dir = summary_json.parent
+            try:
+                rehydrator = RunRehydrator(run_dir)
+                meta = rehydrator.load_metadata()
+                summary = rehydrator.load_summary()
+                summary_info = summary.get("summary_info", {})
 
-                    topo = (
-                        meta.get("topology")
-                        if meta.get("topology") is not None
-                        else meta.get("sharing_mode")
-                    )
-                    records.append(
-                        {
-                            "run_id": meta.get("run_id"),
-                            "experiment_id": meta.get("experiment_id"),
-                            "policy": meta.get("memory_policy"),
-                            "topology": topo,
-                            "poisoning_mode": meta.get("poisoning_mode"),
-                            "seed": meta.get("seed"),
-                            "final_score": summary.get("final_score", 0.0),
-                            "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
-                            "peer_contamination_rate": summary_info.get(
-                                "peer_contamination_rate", 0.0
-                            ),
-                        }
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("Failed to rehydrate %s: %s", run_dir, exc)
+                topo = (
+                    meta.get("topology")
+                    if meta.get("topology") is not None
+                    else meta.get("sharing_mode")
+                )
+                records.append(
+                    {
+                        "run_id": meta.get("run_id"),
+                        "experiment_id": meta.get("experiment_id"),
+                        "policy": meta.get("memory_policy"),
+                        "topology": topo,
+                        "poisoning_mode": meta.get("poisoning_mode"),
+                        "seed": meta.get("seed"),
+                        "final_score": summary.get("final_score", 0.0),
+                        "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
+                        "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
+                        "propagation_latency": summary_info.get("propagation_latency"),
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Failed to rehydrate %s: %s", run_dir, exc)
 
-        return pd.DataFrame(records)
+        return pd.DataFrame(records) if records else None
 
     def aggregate_conditions(self) -> pd.DataFrame:
         """Group results by (policy, topology, poisoning_mode) and compute summary statistics.

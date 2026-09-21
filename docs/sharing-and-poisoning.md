@@ -36,7 +36,9 @@ Default payloads are selected by environment. A payload can also be loaded from 
 - `gradual`: begin peer inbox injection at round 5.
 - `clean`: no injection.
 
-The internal seed uses a reward of `1.0`, aligned with the bounded reward scale used by the task environments rather than an artificially dominant reward.
+Internal seeding writes the payload directly into the seed agent's policy state: structured policies receive it as a playbook rule, naive overwrite has its memory text replaced, and the raw trajectory buffer appends an observation tuple whose recorded reward is `0.0`. No seed reward of `1.0` is used.
+
+The default payloads are intentionally explicit, fixed-action directives that directly contradict each environment's scoring (e.g., "always guess '100'", "always move 'stay' and do not collect resources"). They are maximal-helping / dominant-action rules, **not** subtle "locally correct but non-transferable" lessons; treat them as a worst-case contamination stress test rather than a realistic covert poisoning vector.
 
 ## Contamination measurement
 
