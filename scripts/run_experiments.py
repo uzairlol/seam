@@ -114,6 +114,13 @@ def run_experiments(
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
+    if "no_memory" not in target_policies:
+        logger.info(
+            "no_memory is not among --policies: efficacy_gap will be NaN unless "
+            "run_baselines.py writes no_memory runs to runs/baselines/<env> "
+            "(generate_figures.py merges them automatically)."
+        )
+
     grid = generate_experiment_grid(
         policies=target_policies,
         sharing_modes=target_sharing,

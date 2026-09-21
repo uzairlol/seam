@@ -20,11 +20,29 @@ class ResultAggregator:
 
     Args:
         runs_dir: Path to directory containing run folders or summary CSV file.
+        baseline_dir: Optional sibling directory (e.g. ``runs/baselines/<env>``)
+            whose ``no_memory`` runs are merged in as the efficacy-gap control
+            when *runs_dir* itself contains no ``no_memory`` rows.
     """
 
-    def __init__(self, runs_dir: str | Path = "runs/experiments") -> None:
+    def __init__(
+        self,
+        runs_dir: str | Path = "runs/experiments",
+        baseline_dir: str | Path | None = None,
+    ) -> None:
         self.runs_dir = Path(runs_dir)
-        self.df = compute_efficacy_gap(self._load_data())
+        self.baseline_dir = Path(baseline_dir) if baseline_dir is not None else None
+        df = self._load_data()
+        if not _has_control_rows(df):
+            baseline = self._load_baseline_data()
+            if baseline is not None and not baseline.empty:
+                logger.info(
+                    "Merging %d no_memory baseline runs from %s",
+                    len(baseline),
+                    self.baseline_dir,
+                )
+                df = pd.concat([df, baseline], ignore_index=True)
+        self.df = compute_efficacy_gap(df)
 
     def _load_data(self) -> pd.DataFrame:
         """Load experiment data into a pandas DataFrame.
@@ -36,7 +54,7 @@ class ResultAggregator:
         stale and the freshly rehydrated records take precedence.
         """
         csv_df = self._load_summary_csv()
-        scan_df = self._scan_run_dirs()
+        scan_df = _scan_run_dirs(self.runs_dir)
 
         if scan_df is None:
             return csv_df if csv_df is not None else pd.DataFrame()
@@ -64,45 +82,16 @@ class ResultAggregator:
             logger.warning("Could not read %s: %s", summary_csv, exc)
             return None
 
-    def _scan_run_dirs(self) -> pd.DataFrame | None:
-        """Recursively rehydrate ``summary.json`` files from run subdirectories."""
-        if not self.runs_dir.exists():
+    def _load_baseline_data(self) -> pd.DataFrame | None:
+        """Load only ``no_memory`` runs from the sibling baseline directory."""
+        if self.baseline_dir is None or not self.baseline_dir.exists():
             return None
-
-        records = []
-        for summary_json in self.runs_dir.rglob("summary.json"):
-            run_dir = summary_json.parent
-            try:
-                rehydrator = RunRehydrator(run_dir)
-                meta = rehydrator.load_metadata()
-                summary = rehydrator.load_summary()
-                summary_info = summary.get("summary_info", {})
-
-                topo = (
-                    meta.get("topology")
-                    if meta.get("topology") is not None
-                    else meta.get("sharing_mode")
-                )
-                records.append(
-                    {
-                        "run_id": meta.get("run_id"),
-                        "experiment_id": meta.get("experiment_id"),
-                        "policy": meta.get("memory_policy"),
-                        "topology": topo,
-                        "poisoning_mode": meta.get("poisoning_mode"),
-                        "seed": meta.get("seed"),
-                        "final_score": summary.get("final_score", 0.0),
-                        "oracle_score": summary_info.get("oracle_score"),
-                        "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
-                        "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
-                        "poison_dosage_rate": summary_info.get("poison_dosage_rate", 0.0),
-                        "propagation_latency": summary_info.get("propagation_latency"),
-                    }
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("Failed to rehydrate %s: %s", run_dir, exc)
-
-        return pd.DataFrame(records) if records else None
+        baseline = _scan_run_dirs(self.baseline_dir)
+        if baseline is None or baseline.empty:
+            return None
+        control = baseline[baseline["policy"] == "no_memory"]
+        logger.debug("Baseline dir %s yielded %d no_memory runs", self.baseline_dir, len(control))
+        return control if not control.empty else None
 
     def aggregate_conditions(self) -> pd.DataFrame:
         """Group results by (policy, topology, poisoning_mode) and compute summary statistics.
@@ -241,3 +230,49 @@ class ResultAggregator:
             lines.append("| " + " | ".join(row_parts) + " |")
 
         return "\n".join(lines)
+
+
+def _has_control_rows(df: pd.DataFrame) -> bool:
+    """True when the frame already contains ``no_memory`` control rows."""
+    return "policy" in df.columns and bool((df["policy"] == "no_memory").any())
+
+
+def _scan_run_dirs(directory: Path) -> pd.DataFrame | None:
+    """Recursively rehydrate ``summary.json`` files from run subdirectories."""
+    if not directory.exists():
+        return None
+
+    records = []
+    for summary_json in directory.rglob("summary.json"):
+        run_dir = summary_json.parent
+        try:
+            rehydrator = RunRehydrator(run_dir)
+            meta = rehydrator.load_metadata()
+            summary = rehydrator.load_summary()
+            summary_info = summary.get("summary_info", {})
+
+            topo = (
+                meta.get("topology")
+                if meta.get("topology") is not None
+                else meta.get("sharing_mode")
+            )
+            records.append(
+                {
+                    "run_id": meta.get("run_id"),
+                    "experiment_id": meta.get("experiment_id"),
+                    "policy": meta.get("memory_policy"),
+                    "topology": topo,
+                    "poisoning_mode": meta.get("poisoning_mode"),
+                    "seed": meta.get("seed"),
+                    "final_score": summary.get("final_score", 0.0),
+                    "oracle_score": summary_info.get("oracle_score"),
+                    "mean_self_bleu": summary_info.get("mean_self_bleu", 0.0),
+                    "peer_contamination_rate": summary_info.get("peer_contamination_rate", 0.0),
+                    "poison_dosage_rate": summary_info.get("poison_dosage_rate", 0.0),
+                    "propagation_latency": summary_info.get("propagation_latency"),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Failed to rehydrate %s: %s", run_dir, exc)
+
+    return pd.DataFrame(records) if records else None

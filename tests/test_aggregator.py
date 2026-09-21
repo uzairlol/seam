@@ -253,3 +253,86 @@ def test_aggregator_derives_efficacy_gap_from_oracle_scores():
         md = agg.to_markdown_table()
         assert "Efficacy Gap" in md
         assert "Oracle Score" in md
+
+
+def _write_oracle_run(run_dir: Path, run_id: str, *, policy: str, seed: int, score: float) -> None:
+    """Write a run directory with oracle_score so efficacy can be computed."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "metadata.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "experiment_id": "exp_t",
+                "seed": seed,
+                "memory_policy": policy,
+                "sharing_mode": "broadcast",
+                "topology": "off" if policy == "no_memory" else "ring",
+                "poisoning_mode": "clean",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "summary.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "final_score": score,
+                "summary_info": {
+                    "mean_self_bleu": 0.9,
+                    "peer_contamination_rate": 0.0,
+                    "propagation_latency": 2.0,
+                    "oracle_score": 0.5,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_aggregator_merges_baseline_dir_for_efficacy():
+    """An experiment dir without no_memory rows gets its control from baseline_dir."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        experiments = tmp_path / "runs" / "experiments" / "resource_foraging"
+        baselines = tmp_path / "runs" / "baselines" / "resource_foraging"
+
+        # Experiments: no no_memory rows.
+        _write_oracle_run(
+            experiments / "treated_42",
+            "treated_42",
+            policy="naive_overwrite",
+            seed=42,
+            score=0.3,
+        )
+        # Baselines: the no_memory control.
+        _write_oracle_run(baselines / "ctl_42", "ctl_42", policy="no_memory", seed=42, score=0.1)
+
+        # Without a baseline dir, efficacy cannot be derived.
+        bare = ResultAggregator(experiments)
+        assert "efficacy_gap" in bare.df.columns
+        assert bare.df["efficacy_gap"].isna().all()
+
+        # With the baseline dir merged, the headroom normalization applies:
+        # efficacy = (0.3 - 0.1) / (0.5 - 0.1) = 0.5.
+        merged = ResultAggregator(experiments, baseline_dir=baselines)
+        assert len(merged.df) == 2
+        treated_row = merged.df[merged.df["policy"] == "naive_overwrite"]
+        assert pytest.approx(treated_row.iloc[0]["efficacy_gap"]) == 0.5
+
+
+def test_aggregator_does_not_merge_baseline_when_control_present():
+    """An experiment dir that already has no_memory rows keeps its own control."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        experiments = tmp_path / "runs" / "experiments" / "resource_foraging"
+        baselines = tmp_path / "runs" / "baselines" / "resource_foraging"
+
+        _write_oracle_run(experiments / "ctl_42", "ctl_42", policy="no_memory", seed=42, score=0.1)
+        _write_oracle_run(
+            experiments / "treated_42", "treated_42", policy="naive_overwrite", seed=42, score=0.3
+        )
+        _write_oracle_run(baselines / "ctl_b", "ctl_b", policy="no_memory", seed=42, score=0.1)
+
+        merged = ResultAggregator(experiments, baseline_dir=baselines)
+        assert len(merged.df) == 2  # baseline row not duplicated
+        assert merged.df["policy"].value_counts().to_dict()["no_memory"] == 1

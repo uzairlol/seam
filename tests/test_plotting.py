@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 from pathlib import Path
 
@@ -124,3 +125,57 @@ def test_generate_figures_exports_summary_statistics():
         stats_df = pd.read_csv(stats_csv)
         assert "final_score_ci_low" in stats_df.columns
         assert "final_score_ci_high" in stats_df.columns
+
+
+def _write_oracle_run(run_dir: Path, run_id: str, *, policy: str, seed: int, score: float) -> None:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "metadata.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "experiment_id": "exp_t",
+                "seed": seed,
+                "memory_policy": policy,
+                "sharing_mode": "broadcast",
+                "topology": "off" if policy == "no_memory" else "ring",
+                "poisoning_mode": "clean",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "summary.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "final_score": score,
+                "summary_info": {
+                    "mean_self_bleu": 0.9,
+                    "peer_contamination_rate": 0.0,
+                    "propagation_latency": 2.0,
+                    "oracle_score": 0.5,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_generate_figures_merges_baseline_dir_for_efficacy():
+    """Figures from runs/experiments/<env> include efficacy via runs/baselines/<env>."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        experiments = tmp_path / "runs" / "experiments" / "resource_foraging"
+        baselines = tmp_path / "runs" / "baselines" / "resource_foraging"
+        figures = tmp_path / "figures"
+
+        _write_oracle_run(
+            experiments / "treated_42", "treated_42", policy="naive_overwrite", seed=42, score=0.3
+        )
+        _write_oracle_run(baselines / "ctl_42", "ctl_42", policy="no_memory", seed=42, score=0.1)
+
+        generate_figures = _load_generate_figures()
+        generate_figures(input_dir=str(experiments), figures_dir=str(figures))
+
+        table_md = (figures / "summary_table.md").read_text(encoding="utf-8")
+        assert "Efficacy Gap" in table_md
+        assert "0.500" in table_md  # (0.3 - 0.1) / (0.5 - 0.1)

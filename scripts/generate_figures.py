@@ -21,18 +21,41 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 
-def generate_figures(input_dir: str = "runs/experiments", figures_dir: str = "figures") -> None:
+def _derive_baseline_dir(input_dir: str | Path) -> Path | None:
+    """Suggest ``runs/baselines/<env>`` for an ``runs/experiments/<env>`` input dir."""
+    inp = Path(input_dir)
+    if inp.parent.name == "experiments":
+        candidate = inp.parent.parent / "baselines" / inp.name
+        return candidate if candidate.exists() else None
+    return None
+
+
+def generate_figures(
+    input_dir: str = "runs/experiments",
+    figures_dir: str = "figures",
+    baseline_dir: str | Path | None = None,
+) -> None:
     """Read experiment outputs and generate plots and markdown summary table.
+
+    When *baseline_dir* is not given but an ``runs/baselines/<env>`` sibling of
+    *input_dir* exists, it is passed to the aggregator so that ``no_memory``
+    control runs from the Phase-5 baseline script can feed the efficacy gap.
 
     Args:
         input_dir: Directory containing experiment runs / results_summary.csv.
         figures_dir: Output folder for generated PNG plots and summary table.
+        baseline_dir: Optional explicit baseline runs directory.
     """
     inp_path = Path(input_dir)
     fig_path = Path(figures_dir)
     fig_path.mkdir(parents=True, exist_ok=True)
 
-    aggregator = ResultAggregator(inp_path)
+    if baseline_dir is None:
+        baseline_dir = _derive_baseline_dir(inp_path)
+    if baseline_dir is not None:
+        logger.info("Using baseline directory %s for efficacy-gap control runs", baseline_dir)
+
+    aggregator = ResultAggregator(inp_path, baseline_dir=baseline_dir)
     df = aggregator.df
 
     if df.empty:
@@ -69,9 +92,19 @@ def main() -> None:
         "--indir", type=str, default="runs/experiments", help="Input experiment runs directory"
     )
     parser.add_argument("--outdir", type=str, default="figures", help="Output figures directory")
+    parser.add_argument(
+        "--baseline-dir",
+        type=str,
+        default=None,
+        help="Explicit no_memory baseline runs directory (default: runs/baselines/<env> sibling)",
+    )
     args = parser.parse_args()
 
-    generate_figures(input_dir=args.indir, figures_dir=args.outdir)
+    generate_figures(
+        input_dir=args.indir,
+        figures_dir=args.outdir,
+        baseline_dir=args.baseline_dir,
+    )
 
 
 if __name__ == "__main__":

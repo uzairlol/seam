@@ -19,6 +19,16 @@ from seam.orchestration.runner import EpisodeRunner
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+# The no_memory control is emitted first so that runs/baselines/<env> can serve
+# as the efficacy-gap baseline for experiment figures generated from
+# runs/experiments/<env> (see ResultAggregator(baseline_dir=...)).
+BASELINE_POLICIES = [
+    "no_memory",
+    "naive_overwrite",
+    "raw_trajectory_buffer",
+    "structured_incremental",
+]
+
 
 def run_baselines(
     env_type: str = "resource_foraging",
@@ -26,9 +36,10 @@ def run_baselines(
     seeds: list[int] | None = None,
     output_dir: str = "runs/baselines",
 ) -> list[dict]:
-    """Execute baseline runs for all 3 memory policies without sharing.
+    """Execute single-agent baseline runs without sharing.
 
-    Each :class:`EpisodeRunner` is used as a context manager, guaranteeing that
+    Includes the ``no_memory`` control and the three memory policies.  Each
+    :class:`EpisodeRunner` is used as a context manager, guaranteeing that
     the OllamaClient HTTP connection pool, agent population, and memory policies
     are explicitly released after every seed.  A ``gc.collect()`` call is issued
     after each seed *and* after the entire policy group to maximise heap reclaim.
@@ -43,7 +54,7 @@ def run_baselines(
         List of summary result dictionaries.
     """
     target_seeds = seeds or [1, 2, 3]
-    policies = ["naive_overwrite", "raw_trajectory_buffer", "structured_incremental"]
+    policies = BASELINE_POLICIES
     results: list[dict] = []
 
     for policy in policies:
