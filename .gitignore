@@ -45,6 +45,9 @@ reports/*.csv
 reports/*.xlsx
 !reports/.gitkeep
 
+# Manuscript drafts and working notes — kept out of the public repo
+reports/manuscript/
+
 # -----------------------------------------------------------------------------
 # Python
 # -----------------------------------------------------------------------------
