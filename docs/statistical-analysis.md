@@ -1,0 +1,66 @@
+# Statistical Analysis
+
+This chapter documents the inferential tier of the project: the methods implemented in `src/seam/analysis/significance.py`, the two statistical suites that consume run artifacts, the fixed hypothesis battery, the audit invariants, and the results obtained on the baseline tier. It is the companion to the descriptive aggregation described in [metrics-and-statistics](metrics-and-statistics.md) and the evidence tables in [baseline-results](baseline-results.md). Two distinct suites exist and must not be confused: the experiment-tier battery encoded inside `significance.py` (H1–H7, run via `scripts/run_significance_tests.py` on `runs/experiments`), and the baseline-tier suite inside `scripts/analyze_baselines.py` (active-policy versus `no_memory` tests on `runs/baselines`). Both share the same inferential machinery but ask different questions of different data.
+
+## Shared inferential machinery
+
+Every pairwise comparison in both suites is a two-sided Mann-Whitney U test (sciPy's `stats.mannwhitneyu`, `alternative="two-sided"`), chosen because the run-level score distributions are visibly non-normal and the sample sizes are small (n = 10 per condition, occasionally 8 after NaN drops). The test returns the U statistic and a raw p-value; SciPy raises a `ValueError` on degenerate inputs (for example all-equal values), which the suites catch and convert to `u = 0.0, p = 1.0` rather than crashing. Effect size is reported as Cliff's delta, computed as `(more - less) / (n_x * n_y)` over the dominance matrix where `more` counts pairs with x > y and `less` counts pairs with x < y; it ranges from −1 (every A below every B) through 0 (indistinguishable) to +1 (every A above every B). The magnitude is labelled by the standard thresholds `|d| < 0.147` negligible, `< 0.33` small, `< 0.474` medium, and otherwise large.
+
+Multiple comparisons are controlled with the Benjamini-Hochberg false-discovery-rate procedure applied across all tests in a single run of the suite. Both suites compute the adjusted p-values identically: sort raw p-values ascending, assign each rank `i` the adjusted value `q_i = p_i × N / i` starting from the largest p and walking down while carrying a running minimum, then map the monotone sequence back to the original test order and clip to `[0, 1]`. A test is reported statistically significant (the `is_statistically_significant` flag, and the `**YES**` marker in the Markdown report) when its **FDR-adjusted** p-value is below 0.05, not when the raw p is. The observable consequence is that a raw p slightly below 0.05 can flip to non-significant after correction; one raw p = 0.00017 and one raw p = 0.00018 from different tests both land at the same FDR value 0.00109 in the baseline CSV, which is the running-minimum mapping in action.
+
+## Audit invariants
+
+Before any hypothesis reporting, `audit_invariants()` checks three structural properties on the combined long-form frame and refuses to bless results that violate them. The first invariant is that clean (`poisoning == "clean"`) runs have a peer contamination rate of exactly 0; the second is that isolated (`topology == "off"`) runs have a peer contamination rate of exactly 0 even under internal poisoning. Any violating rows are enumerated with environment, policy, topology, seed and contamination rate. The third check is not an invariant but a completeness report: per environment, the total run count, the sorted unique seeds, and the sorted unique policies, topologies and poisoning modes present. The function returns `{"status": "PASSED" | "FAILED", "violations": [...], "completeness": {...}}`, which `run_significance_tests.py` writes verbatim to `reports/audit_invariants.json` and summarizes at the top of `reports/statistical_tests.md`. The Markdown report hardcodes the expected baseline-tier completeness claim ("10 distinct seeds 40 through 49 present for all 18 condition combinations per environment") and asserts zero violations; that text is regenerated from the script template and should be re-verified against the actual audit JSON after any sweep.
+
+Before any of this, `normalize_dataframe()` maps either aggregator's column vocabulary (`poisoning_mode`→`poisoning`, `final_score`→`score`, `peer_contamination_rate`→`contamination_rate`, `mean_self_bleu`→`self_bleu`) and infers an `environment` column from run/experiment IDs when the frame lacks one, defaulting any unrecognized ID to `resource_foraging`. This normalization matters for reproducibility: the module is shared between the two suites that load data differently, and the inference branch is fragile by design — it contains a hardcoded string match on `bargaining` and `number_guessing`.
+
+## The experiment-tier battery (H1–H7)
+
+The battery in `run_statistical_suite()` runs the same seven test specifications for every environment present in the input frame, skipping any metric column that the frame is missing. The seven specifications are fixed constants in the source and are reproduced here verbatim for the paper's pre-registration-style table; each is a two-condition comparison filtered by exact values of `policy`, `topology` and `poisoning`.
+
+| ID | Metric | Condition A | Condition B | Question |
+|---|---|---|---|---|
+| H1 `struct_vs_naive_score` | score | structured_incremental, ring, clean | naive_overwrite, ring, clean | Does playbook memory beat overwrite on task score under peer sharing? |
+| H2 `struct_vs_naive_score_isolated` | score | structured_incremental, off, clean | naive_overwrite, off, clean | Same question without any sharing. |
+| H3 `struct_vs_raw_score` | score | structured_incremental, ring, clean | raw_trajectory_buffer, ring, clean | Does distilled playbook memory beat verbatim trajectory buffers? |
+| H4 `ring_vs_broadcast_contamination_rate` | contamination_rate | structured_incremental, ring, internal | structured_incremental, full_broadcast, internal | Is contamination lower with a sparser ring graph than with broadcast? |
+| H5 `ring_vs_broadcast_propagation_latency` | propagation_latency | structured_incremental, ring, internal | structured_incremental, full_broadcast, internal | Is the payload slower to contaminate peers on a ring? |
+| H6 `struct_vs_naive_self_bleu` | self_bleu | structured_incremental, off, clean | naive_overwrite, off, clean | Is playbook memory lexically more stable (less collapse) than overwrite when isolated? |
+| H7 `struct_vs_naive_action_entropy` | action_entropy | structured_incremental, ring, clean | naive_overwrite, ring, clean | Does shared playbook memory diversify behaviour vs overwrite? |
+
+Two battery specifics must be preserved in prose. First, the suite iterates `df["environment"].unique()`, so an experimental frame that includes all three environments produces up to 3 × 7 = 21 tests, with rows skipped only where a metric column is missing (for example, `propagation_latency` needs non-null values and `action_entropy` exists only as the per-agent lists in summaries, so H5/H7 have constraints in practice). Second, the suite is value-filter based: comparisons are derived by equality on exact policy/topology/poisoning strings, so the frame must contain those exact condition rows or the corresponding test row simply never appears.
+
+## The baseline-tier suite
+
+`scripts/analyze_baselines.py` does not use the H1–H7 battery; it generates its own comparisons against the `no_memory` control on per-environment data, and only then applies the same Cliff's-delta and FDR machinery. Per environment it tests `final_score` for `structured_incremental` vs `no_memory`, `raw_trajectory_buffer` vs `no_memory`, `naive_overwrite` vs `no_memory`, and `structured_incremental` vs `naive_overwrite`, plus `efficacy_gap` for `structured_incremental` vs `raw_trajectory_buffer` and `raw_trajectory_buffer` vs `naive_overwrite`. The efficacy-gap comparisons reuse `compute_efficacy_gap` (per-seed normalization: score minus mean `no_memory` score, divided by oracle minus baseline, defined only where the headroom exceeds 1e-9 in absolute value). This per-seed mechanism explains the n = 8 rows seen for number guessing: on two seeds the `no_memory` mean score happened to equal the oracle score, the headroom collapsed to zero, the efficacy gap became NaN for every policy on those seeds, and the NaN-dropping test then compared only the remaining eight seeds. The `is_statistically_significant` flag in this suite is likewise decided on the FDR-adjusted p (the raw flag is computed first and then overwritten by the FDR pass). Because the suites differ, no H1–H7 row exists for the baseline tier, and no baseline-comparison row exists for the experiment tier; cross-referencing "hypothesis" names between the two would be a category error in the manuscript.
+
+## Baseline-tier results
+
+The tests below are the eighteen comparisons shipped in `reports/baselines/statistical_tests.csv` (seed-mate baseline lines in line with the audit rules; all runs qwen2.5:7b, seeds 40–49, n = 10 per condition unless noted). Means are mated with medians; p values are raw and FDR-adjusted; significance is decided on the FDR value.
+
+| Env | Test | A mean (med) | B mean (med) | Cliff's δ | FDR p | Sig |
+|---|---|---|---|---|---|---|
+| bargaining | structured vs no_memory (final) | 0.0590 (0.0596) | 0.0455 (0.0455) | 0.000 | 1.000 | no |
+| bargaining | raw_buffer vs no_memory (final) | 0.0000 (0.0000) | 0.0455 (0.0455) | −0.500 | 0.0491 | yes |
+| bargaining | naive vs no_memory (final) | 0.0020 (0.0000) | 0.0455 (0.0455) | −0.450 | 0.0979 | no |
+| bargaining | structured vs naive (final) | 0.0590 (0.0596) | 0.0020 (0.0000) | 1.000 | 0.0011 | yes |
+| bargaining | structured vs raw (efficacy gap) | 0.0119 (0.0118) | −0.0500 (−0.0500) | 0.500 | 0.1351 | no |
+| bargaining | raw vs naive (efficacy gap) | −0.0500 (−0.0500) | −0.0478 (−0.0392) | −0.050 | 1.000 | no |
+| number_guessing | structured vs no_memory (final) | 0.0539 (0.0192) | 0.0555 (0.0356) | −0.060 | 1.000 | no |
+| number_guessing | raw vs no_memory (final) | 0.0722 (0.0532) | 0.0555 (0.0356) | 0.260 | 0.5584 | no |
+| number_guessing | naive vs no_memory (final) | 0.0380 (0.0313) | 0.0555 (0.0356) | −0.120 | 1.000 | no |
+| number_guessing | structured vs naive (final) | 0.0539 (0.0192) | 0.0380 (0.0313) | 0.000 | 1.000 | no |
+| number_guessing | structured vs raw (efficacy gap, n=8) | −0.1233 (−0.0621) | 0.2218 (0.2424) | −0.500 | 0.1809 | no |
+| number_guessing | raw vs naive (efficacy gap, n=8) | 0.2218 (0.2424) | 0.0451 (0.0000) | 0.094 | 1.000 | no |
+| resource_foraging | structured vs no_memory (final) | 0.4767 (0.4811) | 0.1129 (0.1159) | 1.000 | 0.0011 | yes |
+| resource_foraging | raw vs no_memory (final) | 0.0618 (0.0394) | 0.1129 (0.1159) | −0.620 | 0.0631 | no |
+| resource_foraging | naive vs no_memory (final) | 0.0650 (0.0195) | 0.1129 (0.1159) | −0.460 | 0.1753 | no |
+| resource_foraging | structured vs naive (final) | 0.4767 (0.4811) | 0.0650 (0.0195) | 1.000 | 0.0011 | yes |
+| resource_foraging | structured vs raw (efficacy gap) | 1.5334 (1.3852) | −0.2474 (−0.1482) | 0.980 | 0.0011 | yes |
+| resource_foraging | raw vs naive (efficacy gap) | −0.2474 (−0.1482) | −0.3003 (−0.1717) | 0.000 | 1.000 | no |
+
+Four interpretive notes belong next to this table. The `structured` advantage is statistically robust only in resource foraging among these baselines, and Counterintuitively its efficacy gap exceeds 1.0 (mean 1.53), meaning the playbook agent outperformed the deterministic greedy oracle reference on the headroom scale — a legitimate but surprising finding to flag in the paper, not a bug (the audits pass). The bargaining `raw` versus `no_memory` row is significant at FDR but the effect is *negative* (the buffer underperforms no memory), the same direction as the foraging and, weakly, the guessing rows. The efficacy-gap rows for bargaining and guessing are dominated by the tiny absolute gaps producing near-zero denominators, so their large Cliff's deltas (e.g., −0.500 on n = 8 for guessing structured-vs-raw) describe consistent but minuscule absolute differences and should be reported with the score rows alongside. Where six tests share FDR p = 1.0 the raw p was also far above threshold; where several share 0.0011 it is the running-minimum correction collapsing the three genuinely tiny raw p-values to a common adjusted value.
+
+## Report outputs and reruns
+
+`scripts/run_significance_tests.py` has no arguments and reads every environment subdirectory under `runs/experiments`; it writes `reports/audit_invariants.json`, `reports/statistical_tests.json`, `reports/statistical_tests.csv`, and `reports/statistical_tests.md`. `scripts/analyze_baselines.py` writes `reports/baselines/statistical_tests.csv` alongside the summary tables and figures. Neither script modifies the run directories. Rerunning either on unchanged runs is deterministic up to sciPy version, since the Mann-Whitney U statistic and Cliff's delta are exact for the given samples and the FDR procedure is deterministic.
