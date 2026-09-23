@@ -58,7 +58,7 @@ Fraction of an agent's executed actions matching the poison payload pattern. For
 
 ### Time-to-infection survival curves
 
-Each run records the first round at which every peer's memory tested positive for the payload (`peer_propagation_round`; `None` = stayed clean, right-censored at `rounds_played`). `seam.analysis.survival` flattens these into per-peer event/censor records and estimates a Kaplan–Meier survival curve per condition — the fraction of not-yet-contaminated peers still at risk as a function of round. Use `plot_survival_curves()` to render them. Survival answers "how *fast* does the payload spread", which the end-of-episode contamination rate hides.
+Each run records the first round at which every peer's memory tested positive for the payload (`peer_propagation_round`; `None` = stayed clean, right-censored at `rounds_played`). `seam.analysis.survival` flattens these into per-peer event/censor records and estimates a Kaplan–Meier survival curve per condition — the fraction of not-yet-contaminated peers still at risk as a function of round. Use `plot_survival_curves()` to render them. Survival answers "how *fast* does the payload spread", which the end-of-episode contamination rate hides. Note that this plotting function is not part of the default `generate_figures.py` pipeline, which emits only the seven performance/collapse/contamination figures; producing survival panels requires building the long-form DataFrame with `build_survival_dataframe()` from run summaries and calling the plotter manually, so survival is an implemented capability with no shipped figure artifact yet.
 
 ## Aggregation
 
@@ -73,6 +73,10 @@ Each run records the first round at which every peer's memory tested positive fo
 When the underlying runs carry an `oracle_score` (and therefore a seed-matched `no_memory` baseline), the aggregator also derives `efficacy_gap` and reports it in an extended Markdown table.
 
 The generated Markdown table reports mean and confidence interval. It does not report raw per-seed values.
+
+## Inferential statistics tier
+
+Descriptive aggregation above feeds `seam.analysis.significance` and `scripts/run_significance_tests.py` for a fixed hypothesis battery. Every pairwise policy comparison is tested with a two-sided Mann-Whitney U test, reported with the U statistic, p-value, and an effect size as Cliff's delta; family-wide error is controlled with Benjamini-Hochberg false-discovery-rate correction because the battery spans many policy pairs across environments. The battery additionally checks a set of audit invariants before any inference is reported. The exact hypothesis specifications, the H1-H7 lifecycle, thresholds, output files, and the results obtained on the baseline tier live in [statistical-analysis.md](statistical-analysis.md); keep that chapter and this one cross-consistent when editing either.
 
 ## Statistical cautions
 

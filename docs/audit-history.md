@@ -6,6 +6,10 @@ The earlier audit identified risks in channel poisoning, Self-BLEU context mixin
 
 The current code includes fixes for these areas, including peer-targeted channel injection, local-context Self-BLEU input, boundary-aware phrase detection, round-1 sharing cadence, bounded memory text, deprecated-rule cleanup, normalized poison reward, prompt retention, and safer action matching.
 
+## Stale prose documents in the repository
+
+`literature/project_scope/paper_summary.md` predates the audit and the baseline tier. Its headline figures (for example the N=162 run totals spread across three seeds and the large improvement/cliff numbers quoted there) were computed on pre-fix runs that the policy above says must not be pooled into final evidence, and they do not match the post-fix baseline tier documented in `reports/baselines` and [baseline-results.md](baseline-results.md). Do not copy numbers from that file into the manuscript; treat it as historical context. When a number appears both in an old prose document and in a fresh artifact, the artifact and its `config_snapshot.yaml` win.
+
 ## How to classify runs
 
 ### Pre-fix

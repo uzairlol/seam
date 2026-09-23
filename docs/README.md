@@ -8,13 +8,17 @@ Shared Evolving Agent Memory (SEAM) studies how memory-update policies and peer-
 2. [Architecture](architecture.md) for the components and their data flow.
 3. [Experiment lifecycle](experiment-lifecycle.md) for the exact order of operations in a run.
 4. [Scenarios](scenarios.md) for the task rules, actions, rewards, and scoring.
-5. [Memory policies](memory-policies.md) for the three memory mechanisms.
+5. [Memory policies](memory-policies.md) for the four memory mechanisms (including the `no_memory` control).
 6. [Sharing and poisoning](sharing-and-poisoning.md) for topologies, routing, injection, and contamination.
 7. [Metrics and statistics](metrics-and-statistics.md) for implemented measures and aggregation.
-8. [Outputs and reproducibility](outputs-and-reproducibility.md) for commands, artifacts, and rerun checks.
-9. [Literature map](literature-map.md) for the connection between the local corpus and SEAM design choices.
-10. [Manuscript guide](manuscript-guide.md) for a suggested paper structure and claims discipline.
-11. [Audit history](audit-history.md) for known pre-fix result risks and validation status.
+8. [Prompts and decoding](prompts-and-decoding.md) for the exact prompt template, action extraction, and model decoding.
+9. [Artifact schemas](artifact-schemas.md) for the field-by-field format of every run and report file.
+10. [Statistical analysis](statistical-analysis.md) for the hypothesis battery, audit invariants, and inferential results.
+11. [Baseline results](baseline-results.md) for the 120-run post-fix evidence tier and its tables.
+12. [Outputs and reproducibility](outputs-and-reproducibility.md) for commands, artifacts, and rerun checks.
+13. [Literature map](literature-map.md) for the connection between the local corpus and SEAM design choices.
+14. [Manuscript guide](manuscript-guide.md) for a suggested paper structure and claims discipline.
+15. [Audit history](audit-history.md) for known pre-fix result risks and validation status.
 
 ## Source of truth
 

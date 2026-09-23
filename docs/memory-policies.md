@@ -28,6 +28,10 @@ The policy maintains a playbook of active rules. LLM responses are parsed for ex
 
 **Interpretation:** an ACE-style Generate -> Reflect -> Curate abstraction, represented here as a compact rule store rather than a raw transcript.
 
+## No-memory control
+
+The factory also resolves `no_memory` (aliased as `none`) to `NoMemoryPolicy`, which keeps no state across rounds: `update()` is a no-op, `get_context()` always returns an empty string, and the serialized form contains only the policy name. `NoMemoryPolicy` is not part of the default three-policy factorial in the documented commands, but the experiment CLI's default policy list includes it and the baseline script always runs it first, precisely so that its per-seed mean final score can serve as the `baseline` term of the efficacy-gap normalization. Because it emits no text, its Self-BLEU is always 0.0, its memory-length series is a flat list of zeros, and it never ingests shared context; `compute_efficacy_gap()` treats rows whose `policy == "no_memory"` and `topology == "off"` as the control and averages their final scores per seed.
+
 ## Shared context and local memory
 
 The runner keeps local policy context separate from the shared context when constructing action prompts. It records local context for Self-BLEU and the updated policy state for memory-length/logging. This separation is intended to prevent peer convergence from being mistaken for temporal self-collapse.

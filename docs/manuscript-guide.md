@@ -57,7 +57,7 @@ For each manuscript claim, record:
 
 ## Methods details that are easy to omit
 
-Include the action parser and fallback behavior, not only the prompt text. State that observations are passed as Python dictionary string representations, that the first ten action labels are shown in the generic prompt, and that role-specific bargaining instructions alter the requested output format. Report that memory sharing is periodic rather than necessarily every round, and give the exact cadence and artifact budget.
+Include the action parser and fallback behavior, not only the prompt text. State that observations are passed as Python dictionary string representations, that the available-actions block lists up to twenty action labels (or an integer-range summary when the space starts with digits and exceeds twenty entries), and that role-specific bargaining instructions alter the requested output format. Report that memory sharing is periodic rather than necessarily every round, and give the exact cadence and artifact budget.
 
 ## Results table minimum
 

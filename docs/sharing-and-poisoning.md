@@ -10,7 +10,7 @@ The engine maintains one inbox per agent. On each publish round it:
 2. truncates the artifact to `max_artifact_tokens` whitespace tokens;
 3. asks `TopologyGenerator` for the target's neighbors;
 4. formats incoming messages as `[agent_id]: artifact`;
-5. applies `consume_mode=top_k` by retaining at most two received chunks;
+5. applies the consume filter, which is `top_k` by default in the engine's public default configuration but `all` in every shipped experiment command — `top_k` retains at most two received chunks, `all` retains every received chunk;
 6. exposes the inbox as `=== Shared Peer Memories ===`.
 
 Publishing starts at round 1 and repeats every `publish_every_n_rounds` rounds. Sharing mode `off` disables routing and context exposure.
