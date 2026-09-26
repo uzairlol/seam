@@ -40,10 +40,13 @@ figures/**/*.svg
 figures/**/*.pdf
 !figures/.gitkeep
 
-# Reports: keep .md write-ups, ignore generated CSVs/Excel
-reports/*.csv
-reports/*.xlsx
-!reports/.gitkeep
+# -----------------------------------------------------------------------------
+# Reports — analysis write-ups, generated CSVs, and manuscript drafts.
+# All of it is local-only: the repo is public and this content is unpublished
+# working material. Regenerate with scripts/analyze_*.py; nothing here is the
+# source of truth, and reports/ has been stripped from git history as well.
+# -----------------------------------------------------------------------------
+reports/
 
 # Manuscript drafts and working notes — kept out of the public repo
 reports/manuscript/
